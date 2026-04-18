@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/profile_bloc.dart';
+import 'reminders_page.dart';
+import 'qr_scan_page.dart';
 import 'edit_profile_page.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -247,7 +249,7 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomNavigationBar() {
+  Widget _buildBottomNavigationBar(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -258,10 +260,15 @@ class ProfilePage extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildNavItem(Icons.home_filled, false),
-            _buildNavItem(Icons.folder_outlined, false),
-            _buildNavItem(Icons.access_time, false),
-            _buildNavItem(Icons.chat_bubble_outline, false),
+            _buildNavItem(Icons.home_filled, false, () {
+              Navigator.popUntil(context, (route) => route.isFirst);
+            }),
+            _buildNavItem(Icons.folder_outlined, false, () {
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const RemindersPage()));
+            }),
+            _buildNavItem(Icons.access_time, false, () {
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const QrScanPage()));
+            }),
             _buildProfileNavItem(),
           ],
         ),
@@ -269,11 +276,14 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(IconData icon, bool isSelected) {
-    return Icon(
-      icon,
-      color: isSelected ? const Color(0xFF1A50FE) : const Color(0xFF6B8AFF).withOpacity(0.8),
-      size: 28,
+  Widget _buildNavItem(IconData icon, bool isSelected, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Icon(
+        icon,
+        color: isSelected ? const Color(0xFF1A50FE) : const Color(0xFF6B8AFF).withOpacity(0.8),
+        size: 28,
+      ),
     );
   }
 

@@ -113,7 +113,6 @@ class _QrScanPageContentState extends State<_QrScanPageContent> {
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
-              fontFamily: 'Funnel',
             ),
           ),
           
@@ -124,10 +123,10 @@ class _QrScanPageContentState extends State<_QrScanPageContent> {
                 MaterialPageRoute(builder: (context) => const ProfilePage()),
               );
             },
-            child: CircleAvatar(
+            child: const CircleAvatar(
               radius: 20,
-              backgroundColor: Colors.grey[200],
-              backgroundImage: const NetworkImage('https://i.pravatar.cc/150?img=11'),
+              backgroundColor: Colors.grey,
+              child: Icon(Icons.person, color: Colors.white, size: 24),
             ),
           ),
         ],
@@ -143,7 +142,7 @@ class _QrScanPageContentState extends State<_QrScanPageContent> {
       margin: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
       padding: const EdgeInsets.all(30.0),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F8FE),
+        color: Colors.lightBlue.shade50,
         borderRadius: BorderRadius.circular(24.0),
       ),
       child: Column(
@@ -165,7 +164,7 @@ class _QrScanPageContentState extends State<_QrScanPageContent> {
             alignment: Alignment.center,
             children: [
               DottedBorder(
-                color: const Color(0xFF1A50FE),
+                color: Colors.blue.shade700,
                 strokeWidth: 3,
                 dashPattern: const [12, 10],
                 borderType: BorderType.RRect,
@@ -197,65 +196,62 @@ class _QrScanPageContentState extends State<_QrScanPageContent> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: Border.all(color: Colors.grey.shade200, width: 1)),
+        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: SafeArea(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildNavItem(Icons.home, true, () {
-              Navigator.popUntil(context, (route) => route.isFirst);
-            }),
-            _buildNavItem(Icons.folder_outlined, false, () {
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const RemindersPage()));
-            }),
-            _buildAttendanceScanItem(),
-            _buildNavItem(Icons.person_outline, false, () {
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
-            }),
+            // Home
+            InkWell(
+              onTap: () {
+                Navigator.popUntil(context, (route) => route.isFirst);
+              },
+              child: Icon(
+                Icons.home_rounded,
+                color: Colors.grey.shade400,
+                size: 28,
+              ),
+            ),
+            // Reminders
+            InkWell(
+              onTap: () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const RemindersPage()));
+              },
+              child: Icon(
+                Icons.folder_outlined,
+                color: Colors.grey.shade400,
+                size: 28,
+              ),
+            ),
+            // QR Scan / Attendance — active
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.access_time_outlined, color: Colors.blue.shade700, size: 28),
+                ],
+              ),
+            ),
+            // Profile
+            InkWell(
+              onTap: () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
+              },
+              child: Icon(
+                Icons.person_outline,
+                color: Colors.grey.shade400,
+                size: 28,
+              ),
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, bool isPrimaryColor, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Icon(
-        icon,
-        color: isPrimaryColor ? const Color(0xFF1A50FE) : const Color(0xFF6B8AFF).withOpacity(0.8),
-        size: 28,
-      ),
-    );
-  }
-
-  Widget _buildAttendanceScanItem() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEBF0FF),
-        borderRadius: BorderRadius.circular(25),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.access_time, 
-            color: Color(0xFF1A50FE),
-            size: 22,
-          ),
-          const SizedBox(width: 8),
-          const Text(
-            'Attendance Scan',
-            style: TextStyle(
-              color: Color(0xFF1A50FE),
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-          ),
-        ],
       ),
     );
   }

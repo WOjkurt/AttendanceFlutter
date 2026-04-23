@@ -45,6 +45,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
         // Use the exact data from the design mockup
         final dummyData = UserProfile(
+          greeting: "Hi, ",
           name: "Kurt Wojtyle Rizal",
           schoolId: "23017245",
           courseAndYear: "Bachelor of Science in Information Technology | 3",

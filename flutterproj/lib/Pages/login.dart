@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterproj/Widgets/passtoggle.dart';
 import '../Pages/createacc.dart';
+import '../Pages/dashboard.dart';
+import '../blocs/auth_bloc.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -23,7 +26,19 @@ class _LoginPageState extends State<LoginPage> {
   void _handleLogin() {
     String email = _emailController.text;
     String password = _passwordController.text;
-    print("Email: $email, Password: $password");
+    
+    if (email.isNotEmpty && password.isNotEmpty) {
+      context.read<AuthBloc>().add(
+            LoginRequested(email: email, password: password),
+          );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter both email and password.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -32,9 +47,21 @@ class _LoginPageState extends State<LoginPage> {
     const Color labelBlue = Color(0xFF2563A8);
     const Color backgroundColor = Color(0xFFE8F0F7);
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      body: Center(
+    return BlocListener<AuthBloc, AuthState>(
+      listenWhen: (previous, current) => current is AuthError,
+      listener: (context, state) {
+        if (state is AuthError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: backgroundColor,
+        body: Center(
         child: SingleChildScrollView(
           child: Container(
             width: 350,
@@ -174,25 +201,32 @@ class _LoginPageState extends State<LoginPage> {
 
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _handleLogin,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: primaryBlue,
-                        foregroundColor: Colors.white,
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: const Text(
-                        'Log In',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    child: BlocBuilder<AuthBloc, AuthState>(
+                      builder: (context, state) {
+                        if (state is AuthLoading) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        return ElevatedButton(
+                          onPressed: _handleLogin,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: primaryBlue,
+                            foregroundColor: Colors.white,
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          child: const Text(
+                            'Log In',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -234,6 +268,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

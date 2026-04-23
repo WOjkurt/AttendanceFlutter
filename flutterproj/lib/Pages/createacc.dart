@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterproj/Pages/login.dart';
 import 'package:flutterproj/Widgets/passtoggle.dart';
+import '../Pages/dashboard.dart';
+import '../blocs/auth_bloc.dart';
 
 class CreateAccountPage extends StatefulWidget {
   const CreateAccountPage({super.key});
@@ -25,13 +28,21 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   }
 
   void _handleRegister() {
-    String firstName = _firstNameController.text;
-    String lastName = _lastNameController.text;
     String username = _usernameController.text;
     String password = _passwordController.text;
-    print(
-      "Name: $firstName $lastName, Username: $username, Password: $password",
-    );
+    
+    if (username.isNotEmpty && password.isNotEmpty) {
+      context.read<AuthBloc>().add(
+            RegisterRequested(email: username, password: password),
+          );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill out all fields.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -64,9 +75,21 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       ),
     );
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      body: Center(
+    return BlocListener<AuthBloc, AuthState>(
+      listenWhen: (previous, current) => current is AuthError,
+      listener: (context, state) {
+        if (state is AuthError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: backgroundColor,
+        body: Center(
         child: SingleChildScrollView(
           child: Container(
             width: 350,
@@ -187,25 +210,32 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
 
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _handleRegister,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: primaryBlue,
-                        foregroundColor: Colors.white,
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: const Text(
-                        'Create Account',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    child: BlocBuilder<AuthBloc, AuthState>(
+                      builder: (context, state) {
+                        if (state is AuthLoading) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        return ElevatedButton(
+                          onPressed: _handleRegister,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: primaryBlue,
+                            foregroundColor: Colors.white,
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          child: const Text(
+                            'Create Account',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -247,6 +277,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

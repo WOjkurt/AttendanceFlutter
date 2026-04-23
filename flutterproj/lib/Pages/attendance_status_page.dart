@@ -24,14 +24,14 @@ class AttendanceStatusPage extends StatelessWidget {
                       if (state is AttendanceStatusLoading || state is AttendanceStatusInitial) {
                         return const Center(
                           child: Padding(
-                            padding: EdgeInsets.only(top: 50.0),
+                            padding: EdgeInsets.only(top: 100.0),
                             child: CircularProgressIndicator(),
                           ),
                         );
                       } else if (state is AttendanceStatusError) {
                         return Center(
                           child: Padding(
-                            padding: const EdgeInsets.only(top: 50.0),
+                            padding: const EdgeInsets.only(top: 100.0),
                             child: Text(
                               state.errorMessage,
                               style: const TextStyle(color: Colors.red),
@@ -40,9 +40,24 @@ class AttendanceStatusPage extends StatelessWidget {
                         );
                       } else if (state is AttendanceStatusLoaded) {
                         return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _buildStatusCard(state.statusMessage),
-                            const SizedBox(height: 30),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                              child: Text(
+                                state.statusMessage,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            _buildSummaryGrid(state),
+                            const SizedBox(height: 32),
+                            _buildMeritCard(state.meritStatus),
+                            const SizedBox(height: 48),
                             _buildBackToHomeButton(context),
                           ],
                         );
@@ -72,9 +87,9 @@ class AttendanceStatusPage extends StatelessWidget {
                 onTap: () {
                   Navigator.pop(context);
                 },
-                child: const Icon(
+                child: Icon(
                   Icons.arrow_back,
-                  color: Color(0xFF4A5568),
+                  color: Colors.grey.shade600,
                   size: 26,
                 ),
               ),
@@ -86,22 +101,21 @@ class AttendanceStatusPage extends StatelessWidget {
                     MaterialPageRoute(builder: (context) => const ProfilePage()),
                   );
                 },
-                child: CircleAvatar(
+                child: const CircleAvatar(
                   radius: 20,
-                  backgroundColor: Colors.grey[200],
-                  backgroundImage: const NetworkImage('https://i.pravatar.cc/150?img=11'),
+                  backgroundColor: Colors.grey,
+                  child: Icon(Icons.person, color: Colors.white, size: 24),
                 ),
               ),
             ],
           ),
           
           const Text(
-            'Attendance Status',
+            'Attendance Summary',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
-              fontFamily: 'Funnel',
             ),
           ),
         ],
@@ -109,67 +123,135 @@ class AttendanceStatusPage extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusCard(String message) {
+  Widget _buildSummaryGrid(AttendanceStatusLoaded state) {
+    if (state.totalPresents == null || state.totalAbsences == null || state.totalLates == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: const Center(
+            child: Text(
+              "No attendance data received yet.",
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildStatCard('Presents', state.totalPresents, Colors.green),
+          const SizedBox(width: 12),
+          _buildStatCard('Lates', state.totalLates, Colors.orange),
+          const SizedBox(width: 12),
+          _buildStatCard('Absences', state.totalAbsences, Colors.red),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, int? value, MaterialColor color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+        decoration: BoxDecoration(
+          color: color.shade50,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.shade200, width: 1),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value?.toString() ?? "-",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: color.shade700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: color.shade700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMeritCard(String? meritStatus) {
+    final displayStatus = meritStatus ?? "No data received";
+
     return Container(
-      width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 24.0),
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 50.0),
+      padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F8FE),
-        borderRadius: BorderRadius.circular(24.0),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildIllustration(),
-          const SizedBox(height: 40),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15,
-              height: 1.5,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1E293B),
-            ),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1A50FE), Color(0xFF6B8AFF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1A50FE).withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildIllustration() {
-    return SizedBox(
-      height: 140,
-      width: 140,
-      child: Stack(
-        alignment: Alignment.center,
+      child: Row(
         children: [
-          Positioned(
-            top: 0,
-            right: 20,
-            child: Icon(
-              Icons.contact_page_outlined,
-              size: 110,
-              color: const Color(0xFF1A50FE).withOpacity(0.9),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
             ),
+            child: const Icon(Icons.star_rounded, color: Colors.white, size: 36),
           ),
-          
-          Positioned(
-            bottom: 20,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF4F8FE),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check,
-                size: 60,
-                color: Color(0xFF1A50FE),
-                weight: 900,
-              ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Student Merit',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  displayStatus,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -178,18 +260,24 @@ class AttendanceStatusPage extends StatelessWidget {
   }
 
   Widget _buildBackToHomeButton(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      },
-      child: const Padding(
-        padding: EdgeInsets.symmetric(vertical: 10.0, horizontal: 20.0),
-        child: Text(
-          'Back to Home',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF94A3B8),
+    return Center(
+      child: GestureDetector(
+        onTap: () {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Text(
+            'Back to Home',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B),
+            ),
           ),
         ),
       ),

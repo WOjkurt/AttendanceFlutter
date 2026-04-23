@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/profile_bloc.dart';
+import '../blocs/auth_bloc.dart' as auth;
 import 'reminders_page.dart';
 import 'qr_scan_page.dart';
 import 'edit_profile_page.dart';
@@ -10,10 +12,8 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => ProfileBloc()..add(LoadProfileData()),
-      child: Scaffold(
-        backgroundColor: Colors.white,
+    return Scaffold(
+      backgroundColor: Colors.white,
         body: BlocBuilder<ProfileBloc, ProfileState>(
           builder: (context, state) {
             if (state is ProfileLoading || state is ProfileInitial) {
@@ -26,9 +26,8 @@ class ProfilePage extends StatelessWidget {
             return const SizedBox.shrink();
           },
         ),
-        bottomNavigationBar: _buildBottomNavigationBar(),
-      ),
-    );
+        bottomNavigationBar: _buildBottomNavigationBar(context),
+      );
   }
 
   Widget _buildProfileContent(BuildContext context, UserProfile user) {
@@ -77,8 +76,9 @@ class ProfilePage extends StatelessWidget {
                   ),
                   child: CircleAvatar(
                     radius: 55,
-                    backgroundColor: Colors.grey[200],
-                    backgroundImage: NetworkImage(user.profileImageUrl),
+                    backgroundImage: user.profileImageUrl.startsWith('http') 
+                        ? NetworkImage(user.profileImageUrl) as ImageProvider
+                        : FileImage(File(user.profileImageUrl)),
                   ),
                 ),
               ),
@@ -141,12 +141,13 @@ class ProfilePage extends StatelessWidget {
                     IconButton(
                       icon: Icon(Icons.tune, color: Colors.blue[600]),
                       onPressed: () {
+                        final profileBloc = context.read<ProfileBloc>();
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => EditProfilePage(
+                            builder: (routeContext) => EditProfilePage(
                               currentUser: user,
-                              profileBloc: context.read<ProfileBloc>(),
+                              profileBloc: profileBloc,
                             ),
                           ),
                         );
@@ -195,6 +196,7 @@ class ProfilePage extends StatelessWidget {
                     height: 45,
                     child: ElevatedButton(
                       onPressed: () {
+                        context.read<auth.AuthBloc>().add(const auth.LogoutRequested());
                         context.read<ProfileBloc>().add(LogoutRequested());
                       },
                       style: ElevatedButton.styleFrom(
@@ -253,65 +255,62 @@ class ProfilePage extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: Border.all(color: Colors.grey.shade200, width: 1)),
+        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: SafeArea(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildNavItem(Icons.home_filled, false, () {
-              Navigator.popUntil(context, (route) => route.isFirst);
-            }),
-            _buildNavItem(Icons.folder_outlined, false, () {
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const RemindersPage()));
-            }),
-            _buildNavItem(Icons.access_time, false, () {
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const QrScanPage()));
-            }),
-            _buildProfileNavItem(),
+            // Home
+            InkWell(
+              onTap: () {
+                Navigator.popUntil(context, (route) => route.isFirst);
+              },
+              child: Icon(
+                Icons.home_rounded,
+                color: Colors.grey.shade400,
+                size: 28,
+              ),
+            ),
+            // Reminders
+            InkWell(
+              onTap: () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const RemindersPage()));
+              },
+              child: Icon(
+                Icons.folder_outlined,
+                color: Colors.grey.shade400,
+                size: 28,
+              ),
+            ),
+            // QR Scan / Attendance
+            InkWell(
+              onTap: () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const QrScanPage()));
+              },
+              child: Icon(
+                Icons.access_time_outlined,
+                color: Colors.grey.shade400,
+                size: 28,
+              ),
+            ),
+            // Profile — active
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.person_outline, color: Colors.blue.shade700, size: 28),
+                ],
+              ),
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, bool isSelected, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Icon(
-        icon,
-        color: isSelected ? const Color(0xFF1A50FE) : const Color(0xFF6B8AFF).withOpacity(0.8),
-        size: 28,
-      ),
-    );
-  }
-
-  Widget _buildProfileNavItem() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEBF0FF), // Very light blue background
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.person_outline,
-            color: Color(0xFF1A50FE),
-            size: 24,
-          ),
-          const SizedBox(width: 8),
-          const Text(
-            'Profile',
-            style: TextStyle(
-              color: Color(0xFF1A50FE),
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -336,6 +335,7 @@ class HeaderClipper extends CustomClipper<Path> {
 }
 
 class UserProfile {
+  final String greeting;
   final String name;
   final String schoolId;
   final String courseAndYear;
@@ -345,6 +345,7 @@ class UserProfile {
   final String profileImageUrl;
 
   UserProfile({
+    required this.greeting,
     required this.name,
     required this.schoolId,
     required this.courseAndYear,

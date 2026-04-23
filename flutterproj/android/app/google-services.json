@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "163763635061",
+    "project_id": "ams-finals",
+    "storage_bucket": "ams-finals.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:163763635061:android:14cd6261710062c02b493c",
+        "android_client_info": {
+          "package_name": "com.example.flutterproj"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgRJRFlzUw7rryKxuNAz0Oy0Wt0_0LWKg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

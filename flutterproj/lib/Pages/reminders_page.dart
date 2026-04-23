@@ -54,7 +54,6 @@ class _RemindersPageContent extends StatelessWidget {
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
-              fontFamily: 'Funnel',
             ),
           ),
           
@@ -65,10 +64,10 @@ class _RemindersPageContent extends StatelessWidget {
                 MaterialPageRoute(builder: (context) => const ProfilePage()),
               );
             },
-            child: CircleAvatar(
+            child: const CircleAvatar(
               radius: 20,
-              backgroundColor: Colors.grey[200],
-              backgroundImage: const NetworkImage('https://i.pravatar.cc/150?img=11'),
+              backgroundColor: Colors.grey,
+              child: Icon(Icons.person, color: Colors.white, size: 24),
             ),
           ),
         ],
@@ -85,7 +84,7 @@ class _RemindersPageContent extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 24.0),
           padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A50FE),
+            color: Colors.blue.shade700,
             borderRadius: BorderRadius.circular(30.0),
           ),
           child: Row(
@@ -110,7 +109,7 @@ class _RemindersPageContent extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: isSelected ? const Color(0xFF1A50FE) : Colors.white,
+                      color: isSelected ? Colors.blue.shade700 : Colors.white,
                     ),
                   ),
                 ),
@@ -127,9 +126,13 @@ class _RemindersPageContent extends StatelessWidget {
       builder: (context, state) {
         if (state.classesForDay.isEmpty) {
           return const Center(
-            child: Text(
-              "No classes scheduled for this day.",
-              style: TextStyle(color: Colors.grey, fontSize: 16),
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Text(
+                "No data received from the system yet.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 15, fontWeight: FontWeight.w500),
+              ),
             ),
           );
         }
@@ -151,16 +154,8 @@ class _RemindersPageContent extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16.0),
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.lightBlue.shade50,
         borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(color: const Color(0xFFEBF0FF), width: 2), // Light blue border
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1A50FE).withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,18 +171,25 @@ class _RemindersPageContent extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(
-                Icons.access_time_outlined,
-                size: 18,
-                color: Color(0xFF1A50FE),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.access_time_outlined,
+                  size: 18,
+                  color: Colors.blue.shade700,
+                ),
               ),
               const SizedBox(width: 8),
               Text(
                 classData.time,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFF6B8AFF),
+                  color: Colors.grey.shade600,
                 ),
               ),
             ],
@@ -195,18 +197,25 @@ class _RemindersPageContent extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(
-                Icons.location_on_outlined,
-                size: 18,
-                color: Color(0xFF1A50FE),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.location_on_outlined,
+                  size: 18,
+                  color: Colors.blue.shade700,
+                ),
               ),
               const SizedBox(width: 8),
               Text(
                 classData.location,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFF6B8AFF),
+                  color: Colors.grey.shade600,
                 ),
               ),
             ],
@@ -220,65 +229,62 @@ class _RemindersPageContent extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: Border.all(color: Colors.grey.shade200, width: 1)),
+        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: SafeArea(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildNavItem(Icons.home_outlined, false, () {
-              Navigator.popUntil(context, (route) => route.isFirst);
-            }),
-            _buildRemindersNavItem(),
-            _buildNavItem(Icons.access_time, false, () {
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const QrScanPage()));
-            }),
-            _buildNavItem(Icons.person_outline, false, () {
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
-            }),
+            // Home
+            InkWell(
+              onTap: () {
+                Navigator.popUntil(context, (route) => route.isFirst);
+              },
+              child: Icon(
+                Icons.home_rounded,
+                color: Colors.grey.shade400,
+                size: 28,
+              ),
+            ),
+            // Reminders — active
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.folder_outlined, color: Colors.blue.shade700, size: 28),
+                ],
+              ),
+            ),
+            // QR Scan / Attendance
+            InkWell(
+              onTap: () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const QrScanPage()));
+              },
+              child: Icon(
+                Icons.access_time_outlined,
+                color: Colors.grey.shade400,
+                size: 28,
+              ),
+            ),
+            // Profile
+            InkWell(
+              onTap: () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
+              },
+              child: Icon(
+                Icons.person_outline,
+                color: Colors.grey.shade400,
+                size: 28,
+              ),
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, bool isPrimaryColor, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Icon(
-        icon,
-        color: isPrimaryColor ? const Color(0xFF1A50FE) : const Color(0xFF6B8AFF).withOpacity(0.8),
-        size: 28,
-      ),
-    );
-  }
-
-  Widget _buildRemindersNavItem() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEBF0FF),
-        borderRadius: BorderRadius.circular(25),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.folder, 
-            color: Color(0xFF1A50FE),
-            size: 22,
-          ),
-          const SizedBox(width: 8),
-          const Text(
-            'Reminders',
-            style: TextStyle(
-              color: Color(0xFF1A50FE),
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-          ),
-        ],
       ),
     );
   }

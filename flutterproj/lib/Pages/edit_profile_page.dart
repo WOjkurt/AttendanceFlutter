@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 import '../blocs/edit_profile_bloc.dart';
 import '../blocs/profile_bloc.dart';
 import 'profile_page.dart'; // To get UserProfile definition
@@ -19,35 +21,45 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  late TextEditingController _firstNameController;
-  late TextEditingController _lastNameController;
-  late TextEditingController _emailController;
-  late TextEditingController _phoneController;
-  late TextEditingController _addressController;
+  late TextEditingController _greetingController;
+  File? _imageFile;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    // Try to split the name into first and last, roughly.
-    final nameParts = widget.currentUser.name.split(' ');
-    final firstName = nameParts.isNotEmpty ? nameParts.first : '';
-    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
-
-    _firstNameController = TextEditingController(text: firstName);
-    _lastNameController = TextEditingController(text: lastName);
-    _emailController = TextEditingController(text: widget.currentUser.schoolEmail);
-    _phoneController = TextEditingController(text: widget.currentUser.phoneNumber);
-    _addressController = TextEditingController(text: widget.currentUser.homeAddress);
+    _greetingController = TextEditingController(text: widget.currentUser.greeting);
   }
 
   @override
   void dispose() {
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
+    _greetingController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        setState(() {
+          _imageFile = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to pick image.'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  ImageProvider _getProfileImage() {
+    if (_imageFile != null) {
+      return FileImage(_imageFile!);
+    } else if (widget.currentUser.profileImageUrl.startsWith('http')) {
+      return NetworkImage(widget.currentUser.profileImageUrl);
+    } else {
+      return FileImage(File(widget.currentUser.profileImageUrl));
+    }
   }
 
   @override
@@ -58,15 +70,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
         listener: (context, state) {
           if (state is EditProfileSuccess) {
             // Update the main profile bloc
-            final fullName = '${_firstNameController.text} ${_lastNameController.text}'.trim();
             final updatedProfile = UserProfile(
-              name: fullName,
-              schoolId: widget.currentUser.schoolId, // ID doesn't change
-              courseAndYear: widget.currentUser.courseAndYear, // Course doesn't change
-              schoolEmail: _emailController.text,
-              phoneNumber: _phoneController.text,
-              homeAddress: _addressController.text,
-              profileImageUrl: widget.currentUser.profileImageUrl,
+              greeting: _greetingController.text,
+              name: widget.currentUser.name,
+              schoolId: widget.currentUser.schoolId,
+              courseAndYear: widget.currentUser.courseAndYear,
+              schoolEmail: widget.currentUser.schoolEmail,
+              phoneNumber: widget.currentUser.phoneNumber,
+              homeAddress: widget.currentUser.homeAddress,
+              profileImageUrl: _imageFile?.path ?? widget.currentUser.profileImageUrl,
             );
             
             widget.profileBloc.add(UpdateProfileData(updatedProfile));
@@ -99,17 +111,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
             ),
             centerTitle: true,
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: Center(
-                  child: CircleAvatar(
-                    radius: 16,
-                    backgroundImage: NetworkImage(widget.currentUser.profileImageUrl),
-                  ),
-                ),
-              ),
-            ],
           ),
           body: BlocBuilder<EditProfileBloc, EditProfileState>(
             builder: (context, state) {
@@ -117,15 +118,35 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
                 child: Column(
                   children: [
-                    _buildInputField('First Name', _firstNameController),
-                    const SizedBox(height: 16),
-                    _buildInputField('Last Name', _lastNameController),
-                    const SizedBox(height: 16),
-                    _buildInputField('Email', _emailController),
-                    const SizedBox(height: 16),
-                    _buildInputField('Phone Number', _phoneController),
-                    const SizedBox(height: 16),
-                    _buildInputField('Address', _addressController),
+                    const SizedBox(height: 20),
+                    Center(
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          CircleAvatar(
+                            radius: 60,
+                            backgroundImage: _getProfileImage(),
+                          ),
+                          GestureDetector(
+                            onTap: _pickImage,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF1A50FE),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                    _buildInputField('Greeting', _greetingController),
                     const SizedBox(height: 40),
                     
                     // Submit Button
@@ -138,11 +159,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             : () {
                                 context.read<EditProfileBloc>().add(
                                       UpdateProfileSubmitted(
-                                        firstName: _firstNameController.text,
-                                        lastName: _lastNameController.text,
-                                        email: _emailController.text,
-                                        phone: _phoneController.text,
-                                        address: _addressController.text,
+                                        greeting: _greetingController.text,
+                                        profileImagePath: _imageFile?.path,
                                       ),
                                     );
                               },

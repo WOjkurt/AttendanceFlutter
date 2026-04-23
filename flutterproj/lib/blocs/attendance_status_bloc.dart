@@ -13,9 +13,19 @@ class AttendanceStatusInitial extends AttendanceStatusState {}
 class AttendanceStatusLoading extends AttendanceStatusState {}
 
 class AttendanceStatusLoaded extends AttendanceStatusState {
+  final int? totalPresents;
+  final int? totalAbsences;
+  final int? totalLates;
+  final String? meritStatus;
   final String statusMessage;
 
-  AttendanceStatusLoaded(this.statusMessage);
+  AttendanceStatusLoaded({
+    this.totalPresents,
+    this.totalAbsences,
+    this.totalLates,
+    this.meritStatus,
+    required this.statusMessage,
+  });
 }
 
 class AttendanceStatusError extends AttendanceStatusState {
@@ -31,11 +41,17 @@ class AttendanceStatusBloc extends Bloc<AttendanceStatusEvent, AttendanceStatusS
       emit(AttendanceStatusLoading());
       
       try {
-        // In a real scenario, you might fetch status based on a scanned log ID.
-        // Simulating loading time.
-        await Future.delayed(const Duration(milliseconds: 500));
+        // Simulating loading time for live data.
+        await Future.delayed(const Duration(milliseconds: 800));
         
-        emit(AttendanceStatusLoaded("Your attendance has been\nsuccessfully recorded for\ntoday's class."));
+        // Currently no data received. AI service will populate these later.
+        emit(AttendanceStatusLoaded(
+          totalPresents: null,
+          totalAbsences: null,
+          totalLates: null,
+          meritStatus: null,
+          statusMessage: "Your attendance summary will appear here once data is received from the AI service.",
+        ));
       } catch (e) {
         emit(AttendanceStatusError("Failed to load attendance status."));
       }

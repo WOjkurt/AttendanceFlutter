@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterproj/Widgets/passtoggle.dart';
 import '../Pages/createacc.dart';
-import '../Pages/dashboard.dart';
 import '../blocs/auth_bloc.dart';
 
 class LoginPage extends StatefulWidget {
@@ -107,7 +106,6 @@ class _LoginPageState extends State<LoginPage> {
                     'Class Track',
                     style: TextStyle(
                       fontSize: 26,
-                      fontFamily: 'Instrument',
                       fontWeight: FontWeight.w600,
                       color: primaryBlue,
                     ),
@@ -129,7 +127,7 @@ class _LoginPageState extends State<LoginPage> {
                   TextField(
                     controller: _emailController,
                     decoration: InputDecoration(
-                      hintText: 'kurt.wojtyle@dbtc-cebu.edu.ph',
+                      hintText: 'student@dbtc-cebu.edu.ph',
                       hintStyle: const TextStyle(
                         color: Colors.black38,
                         fontSize: 13,
@@ -221,7 +219,6 @@ class _LoginPageState extends State<LoginPage> {
                             'Log In',
                             style: TextStyle(
                               fontSize: 18,
-                              fontFamily: 'Poppins',
                               fontWeight: FontWeight.bold,
                             ),
                           ),

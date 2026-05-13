@@ -1,27 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'profile_page.dart';
 import '../blocs/attendance_status_bloc.dart';
+import '../blocs/analytics_bloc.dart';
 
 class AttendanceStatusPage extends StatelessWidget {
   const AttendanceStatusPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => AttendanceStatusBloc()..add(LoadAttendanceStatus()),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) =>
+              AttendanceStatusBloc()..add(LoadAttendanceStatus()),
+        ),
+        BlocProvider(
+          create: (context) => AnalyticsBloc(),
+        ),
+      ],
       child: Scaffold(
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(context),
-              const SizedBox(height: 20),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: BlocBuilder<AttendanceStatusBloc, AttendanceStatusState>(
+        backgroundColor: const Color(0xFFF4F7FC),
+        body: Column(
+          children: [
+            _buildHeader(context),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 20.0),
+                  child: BlocConsumer<AttendanceStatusBloc,
+                      AttendanceStatusState>(
+                    listener: (context, state) {
+                      // When attendance data loads, automatically trigger
+                      // analytics (respects cache).
+                      if (state is AttendanceStatusLoaded) {
+                        final data = _buildAttendanceDataMap(state);
+                        context
+                            .read<AnalyticsBloc>()
+                            .add(LoadAnalytics(data));
+                      }
+                    },
                     builder: (context, state) {
-                      if (state is AttendanceStatusLoading || state is AttendanceStatusInitial) {
+                      if (state is AttendanceStatusLoading ||
+                          state is AttendanceStatusInitial) {
                         return const Center(
                           child: Padding(
                             padding: EdgeInsets.only(top: 100.0),
@@ -34,7 +56,7 @@ class AttendanceStatusPage extends StatelessWidget {
                             padding: const EdgeInsets.only(top: 100.0),
                             child: Text(
                               state.errorMessage,
-                              style: const TextStyle(color: Colors.red),
+                              style: GoogleFonts.sourceSans3(color: Colors.red),
                             ),
                           ),
                         );
@@ -43,20 +65,21 @@ class AttendanceStatusPage extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 24.0),
                               child: Text(
                                 state.statusMessage,
-                                style: TextStyle(
-                                  fontSize: 15,
+                                style: GoogleFonts.sourceSans3(
+                                  fontSize: 16,
                                   color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                             const SizedBox(height: 24),
                             _buildSummaryGrid(state),
                             const SizedBox(height: 32),
-                            _buildMeritCard(state.meritStatus),
+                            _buildMeritCard(),
                             const SizedBox(height: 48),
                             _buildBackToHomeButton(context),
                           ],
@@ -67,16 +90,38 @@ class AttendanceStatusPage extends StatelessWidget {
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
+  /// Converts the loaded attendance state into a hashable data map
+  /// used for cache invalidation in the analytics repository.
+  Map<String, dynamic> _buildAttendanceDataMap(AttendanceStatusLoaded state) {
+    return {
+      'totalPresents': state.totalPresents,
+      'totalAbsences': state.totalAbsences,
+      'totalLates': state.totalLates,
+      'meritStatus': state.meritStatus,
+    };
+  }
+
   Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF2E3192), Color(0xFF1BFFFF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+      ),
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -87,10 +132,17 @@ class AttendanceStatusPage extends StatelessWidget {
                 onTap: () {
                   Navigator.pop(context);
                 },
-                child: Icon(
-                  Icons.arrow_back,
-                  color: Colors.grey.shade600,
-                  size: 26,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
               ),
               
@@ -101,21 +153,29 @@ class AttendanceStatusPage extends StatelessWidget {
                     MaterialPageRoute(builder: (context) => const ProfilePage()),
                   );
                 },
-                child: const CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Colors.grey,
-                  child: Icon(Icons.person, color: Colors.white, size: 24),
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Color(0xFFE3E8FC),
+                    child: Icon(Icons.person_rounded, color: Color(0xFF2E3192), size: 24),
+                  ),
                 ),
               ),
             ],
           ),
           
-          const Text(
-            'Attendance Summary',
-            style: TextStyle(
-              fontSize: 20,
+          Text(
+            'Summary',
+            style: GoogleFonts.sourceSans3(
+              fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Colors.white,
+              letterSpacing: 0.5,
             ),
           ),
         ],
@@ -134,13 +194,13 @@ class AttendanceStatusPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.grey.shade200),
           ),
-          child: const Center(
+          child: Center(
             child: Text(
               "No attendance data received yet.",
-              style: TextStyle(
+              style: GoogleFonts.sourceSans3(
                 color: Colors.grey,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
             ),
@@ -151,111 +211,146 @@ class AttendanceStatusPage extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
         children: [
-          _buildStatCard('Presents', state.totalPresents, Colors.green),
-          const SizedBox(width: 12),
-          _buildStatCard('Lates', state.totalLates, Colors.orange),
-          const SizedBox(width: 12),
-          _buildStatCard('Absences', state.totalAbsences, Colors.red),
+          _buildStatRow(
+            label: 'Presents',
+            value: state.totalPresents,
+            icon: Icons.check_circle_outline_rounded,
+            color: Colors.green,
+          ),
+          const SizedBox(height: 12),
+          _buildStatRow(
+            label: 'Lates',
+            value: state.totalLates,
+            icon: Icons.schedule_rounded,
+            color: Colors.orange,
+          ),
+          const SizedBox(height: 12),
+          _buildStatRow(
+            label: 'Absences',
+            value: state.totalAbsences,
+            icon: Icons.cancel_outlined,
+            color: Colors.red,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatCard(String label, int? value, MaterialColor color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
-        decoration: BoxDecoration(
-          color: color.shade50,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.shade200, width: 1),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value?.toString() ?? "-",
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: color.shade700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: color.shade700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMeritCard(String? meritStatus) {
-    final displayStatus = meritStatus ?? "No data received";
-
+  Widget _buildStatRow({
+    required String label,
+    required int? value,
+    required IconData icon,
+    required MaterialColor color,
+  }) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24.0),
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1A50FE), Color(0xFF6B8AFF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1A50FE).withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: color.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.shade100, width: 1),
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              shape: BoxShape.circle,
+          Icon(icon, color: color.shade600, size: 24),
+          const SizedBox(width: 14),
+          Text(
+            label,
+            style: GoogleFonts.sourceSans3(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: color.shade800,
             ),
-            child: const Icon(Icons.star_rounded, color: Colors.white, size: 36),
           ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Student Merit',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  displayStatus,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+          const Spacer(),
+          Text(
+            value?.toString() ?? '-',
+            style: GoogleFonts.sourceSans3(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: color.shade700,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  // ─── Merit Card (powered by AnalyticsBloc) ────────────────────────────────
+
+  Widget _buildMeritCard() {
+    return BlocBuilder<AnalyticsBloc, AnalyticsState>(
+      builder: (context, analyticsState) {
+        // Determine what to display in the merit score area.
+        final String displayScore;
+        if (analyticsState is AnalyticsLoaded) {
+          displayScore = analyticsState.result.meritScore.toString();
+        } else if (analyticsState is AnalyticsLoading) {
+          displayScore = '...';
+        } else if (analyticsState is AnalyticsError) {
+          displayScore = '--';
+        } else {
+          displayScore = '--';
+        }
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 24.0),
+          padding: const EdgeInsets.all(24.0),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1A50FE), Color(0xFF6B8AFF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF1A50FE).withOpacity(0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.star_rounded, color: Colors.white, size: 36),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Student Merit',
+                      style: GoogleFonts.sourceSans3(
+                        color: Colors.white70,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      displayScore,
+                      style: GoogleFonts.sourceSans3(
+                        color: Colors.white,
+                        fontSize: 36,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -271,12 +366,12 @@ class AttendanceStatusPage extends StatelessWidget {
             color: Colors.grey.shade100,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Text(
+          child: Text(
             'Back to Home',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF64748B),
+            style: GoogleFonts.sourceSans3(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF2E3192),
             ),
           ),
         ),

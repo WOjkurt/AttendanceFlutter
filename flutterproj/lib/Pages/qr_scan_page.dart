@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'profile_page.dart';
 import 'attendance_status_page.dart';
 import '../blocs/qr_scan_bloc.dart';
-import 'reminders_page.dart';
+
 
 class QrScanPage extends StatelessWidget {
   const QrScanPage({Key? key}) : super(key: key);
@@ -79,7 +80,7 @@ class _QrScanPageContentState extends State<_QrScanPageContent> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF4F7FC),
         body: SafeArea(
           child: Column(
             children: [
@@ -94,7 +95,6 @@ class _QrScanPageContentState extends State<_QrScanPageContent> {
             ],
           ),
         ),
-        bottomNavigationBar: _buildBottomNavigationBar(context),
       ),
     );
   }
@@ -107,12 +107,12 @@ class _QrScanPageContentState extends State<_QrScanPageContent> {
         children: [
           const SizedBox(width: 40), // Balance the avatar width
           
-          const Text(
+          Text(
             'Scan the QR Code',
-            style: TextStyle(
-              fontSize: 20,
+            style: GoogleFonts.sourceSans3(
+              fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: const Color(0xFF1A1F36),
             ),
           ),
           
@@ -148,14 +148,14 @@ class _QrScanPageContentState extends State<_QrScanPageContent> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
+          Text(
             'Place the QR Code\nwithin this box to scan\nyour attendance',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: GoogleFonts.sourceSans3(
               fontSize: 16,
               height: 1.5,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF4A5568),
+              color: const Color(0xFF4A5568),
             ),
           ),
           const SizedBox(height: 50),
@@ -192,67 +192,4 @@ class _QrScanPageContentState extends State<_QrScanPageContent> {
     );
   }
 
-  Widget _buildBottomNavigationBar(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: SafeArea(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Home
-            InkWell(
-              onTap: () {
-                Navigator.popUntil(context, (route) => route.isFirst);
-              },
-              child: Icon(
-                Icons.home_rounded,
-                color: Colors.grey.shade400,
-                size: 28,
-              ),
-            ),
-            // Reminders
-            InkWell(
-              onTap: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const RemindersPage()));
-              },
-              child: Icon(
-                Icons.folder_outlined,
-                color: Colors.grey.shade400,
-                size: 28,
-              ),
-            ),
-            // QR Scan / Attendance — active
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.access_time_outlined, color: Colors.blue.shade700, size: 28),
-                ],
-              ),
-            ),
-            // Profile
-            InkWell(
-              onTap: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
-              },
-              child: Icon(
-                Icons.person_outline,
-                color: Colors.grey.shade400,
-                size: 28,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 } // End of file

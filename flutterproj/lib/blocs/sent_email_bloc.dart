@@ -1,11 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-// --- Events ---
 abstract class SentEmailEvent {}
 
 class LoadSentEmails extends SentEmailEvent {}
 
-// --- States ---
 abstract class SentEmailState {}
 
 class SentEmailInitial extends SentEmailState {}

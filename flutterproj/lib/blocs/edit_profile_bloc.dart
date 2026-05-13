@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-// --- Events ---
+
 abstract class EditProfileEvent {}
 
 class UpdateProfileSubmitted extends EditProfileEvent {
@@ -13,7 +13,7 @@ class UpdateProfileSubmitted extends EditProfileEvent {
   });
 }
 
-// --- States ---
+
 abstract class EditProfileState {}
 
 class EditProfileInitial extends EditProfileState {}
@@ -28,7 +28,7 @@ class EditProfileError extends EditProfileState {
   EditProfileError(this.message);
 }
 
-// --- BLoC ---
+// BLoC
 class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
   EditProfileBloc() : super(EditProfileInitial()) {
     on<UpdateProfileSubmitted>((event, emit) async {

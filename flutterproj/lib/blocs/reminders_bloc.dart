@@ -1,61 +1,94 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-
-// --- Model ---
-class ClassSchedule {
-  final String title;
-  final String time;
-  final String location;
-
-  ClassSchedule({
-    required this.title,
-    required this.time,
-    required this.location,
-  });
-}
+import 'package:bloc/bloc.dart';
+import 'package:equatable/equatable.dart';
+import '../models/schedule_model.dart';
+import '../services/schedule_service.dart';
 
 // --- Events ---
-abstract class RemindersEvent {}
 
-class SelectDay extends RemindersEvent {
-  final String day;
-  SelectDay(this.day);
+abstract class RemindersEvent extends Equatable {
+  const RemindersEvent();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class LoadReminders extends RemindersEvent {
+  const LoadReminders();
 }
 
 // --- States ---
-class RemindersState {
-  final String selectedDay;
-  final List<ClassSchedule> classesForDay;
 
-  RemindersState({
-    required this.selectedDay,
-    required this.classesForDay,
-  });
+abstract class RemindersState extends Equatable {
+  const RemindersState();
 
-  RemindersState copyWith({
-    String? selectedDay,
-    List<ClassSchedule>? classesForDay,
-  }) {
-    return RemindersState(
-      selectedDay: selectedDay ?? this.selectedDay,
-      classesForDay: classesForDay ?? this.classesForDay,
-    );
-  }
+  @override
+  List<Object?> get props => [];
 }
 
-// --- Data Store ---
-// Currently empty. The AI service / Backend integration will populate this map
-// with data fetched from the endpoint.
-final Map<String, List<ClassSchedule>> _scheduleData = {};
+class RemindersInitial extends RemindersState {
+  const RemindersInitial();
+}
+
+class RemindersLoading extends RemindersState {
+  const RemindersLoading();
+}
+
+class RemindersLoaded extends RemindersState {
+  final Map<String, List<Schedule>> schedulesByDay;
+
+  const RemindersLoaded(this.schedulesByDay);
+
+  @override
+  List<Object?> get props => [schedulesByDay];
+}
+
+class RemindersError extends RemindersState {
+  final String message;
+
+  const RemindersError(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
 
 // --- BLoC ---
+
 class RemindersBloc extends Bloc<RemindersEvent, RemindersState> {
-  RemindersBloc() : super(RemindersState(selectedDay: 'M', classesForDay: _scheduleData['M'] ?? [])) {
-    on<SelectDay>((event, emit) {
-      final selectedClasses = _scheduleData[event.day] ?? [];
-      emit(state.copyWith(
-        selectedDay: event.day,
-        classesForDay: selectedClasses,
-      ));
-    });
+  final ScheduleService _scheduleService;
+
+  RemindersBloc({ScheduleService? scheduleService})
+      : _scheduleService = scheduleService ?? ScheduleService(),
+        super(const RemindersInitial()) {
+    on<LoadReminders>(_onLoadReminders);
+  }
+
+  Future<void> _onLoadReminders(
+    LoadReminders event,
+    Emitter<RemindersState> emit,
+  ) async {
+    emit(const RemindersLoading());
+    try {
+      final schedules = await _scheduleService.getAllSchedules();
+
+      // Group schedules by dayName
+      final grouped = <String, List<Schedule>>{};
+      for (final schedule in schedules) {
+        final day = schedule.dayName;
+        grouped.putIfAbsent(day, () => []).add(schedule);
+      }
+
+      // Sort each day's schedules by start time
+      for (final list in grouped.values) {
+        list.sort((a, b) => a.startTime.compareTo(b.startTime));
+      }
+
+      emit(RemindersLoaded(grouped));
+    } catch (e) {
+      final message = e
+          .toString()
+          .replaceAll('ApiException: ', '')
+          .replaceAll('Exception: ', '');
+      emit(RemindersError(message));
+    }
   }
 }

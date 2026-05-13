@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-// --- Events ---
+
 abstract class QrScanEvent {}
 
 class ScanQrCode extends QrScanEvent {
@@ -11,7 +11,7 @@ class ScanQrCode extends QrScanEvent {
 
 class ResetScanner extends QrScanEvent {}
 
-// --- States ---
+
 abstract class QrScanState {}
 
 class QrScanInitial extends QrScanState {}
@@ -30,7 +30,7 @@ class QrScanError extends QrScanState {
   QrScanError(this.message);
 }
 
-// --- BLoC ---
+//BLoC
 class QrScanBloc extends Bloc<QrScanEvent, QrScanState> {
   QrScanBloc() : super(QrScanInitial()) {
     on<ScanQrCode>((event, emit) async {

@@ -1,42 +1,61 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'profile_page.dart';
-import 'qr_scan_page.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../blocs/reminders_bloc.dart';
+import '../models/schedule_model.dart';
 
 class RemindersPage extends StatelessWidget {
   const RemindersPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => RemindersBloc(),
-      child: const _RemindersPageContent(),
-    );
+    return const _RemindersPageContent();
   }
 }
 
 class _RemindersPageContent extends StatelessWidget {
   const _RemindersPageContent({Key? key}) : super(key: key);
 
+  String _formatTime(String time) {
+    try {
+      final parts = time.split(':');
+      final h = int.parse(parts[0]);
+      final m = int.parse(parts[1]);
+      final period = h >= 12 ? 'PM' : 'AM';
+      final hour12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+      return '$hour12:${m.toString().padLeft(2, '0')} $period';
+    } catch (_) {
+      return time;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF4F7FC),
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(context),
             const SizedBox(height: 10),
-            _buildDaySelector(context),
-            const SizedBox(height: 20),
             Expanded(
-              child: _buildClassList(),
+              child: BlocBuilder<RemindersBloc, RemindersState>(
+                builder: (context, state) {
+                  if (state is RemindersLoading || state is RemindersInitial) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (state is RemindersLoaded) {
+                    return _buildScheduleList(state.schedulesByDay);
+                  } else if (state is RemindersError) {
+                    return _buildErrorView(context, state.message);
+                  }
+                  return const Center(child: Text('Unknown state'));
+                },
+              ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(context),
+      // Bottom nav is handled by DashboardPage
     );
   }
 
@@ -44,30 +63,14 @@ class _RemindersPageContent extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(width: 40), // Balance the avatar width
-          
-          const Text(
+          Text(
             'Reminders',
-            style: TextStyle(
-              fontSize: 20,
+            style: GoogleFonts.sourceSans3(
+              fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          
-          InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProfilePage()),
-              );
-            },
-            child: const CircleAvatar(
-              radius: 20,
-              backgroundColor: Colors.grey,
-              child: Icon(Icons.person, color: Colors.white, size: 24),
+              color: const Color(0xFF1A1F36),
             ),
           ),
         ],
@@ -75,97 +78,116 @@ class _RemindersPageContent extends StatelessWidget {
     );
   }
 
-  Widget _buildDaySelector(BuildContext context) {
-    final List<String> days = ['M', 'T', 'W', 'TH', 'F', 'S'];
-
-    return BlocBuilder<RemindersBloc, RemindersState>(
-      builder: (context, state) {
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 24.0),
-          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-          decoration: BoxDecoration(
-            color: Colors.blue.shade700,
-            borderRadius: BorderRadius.circular(30.0),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: days.map((day) {
-              final isSelected = state.selectedDay == day;
-              
-              return GestureDetector(
-                onTap: () {
-                  context.read<RemindersBloc>().add(SelectDay(day));
-                },
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.white : Colors.transparent,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    day,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? Colors.blue.shade700 : Colors.white,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildClassList() {
-    return BlocBuilder<RemindersBloc, RemindersState>(
-      builder: (context, state) {
-        if (state.classesForDay.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24.0),
-              child: Text(
-                "No data received from the system yet.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 15, fontWeight: FontWeight.w500),
+  Widget _buildScheduleList(Map<String, List<Schedule>> schedulesByDay) {
+    if (schedulesByDay.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.event_available_outlined, size: 72, color: Colors.grey.shade300),
+            const SizedBox(height: 16),
+            Text(
+              'No schedules found.',
+              style: GoogleFonts.sourceSans3(
+                fontSize: 18,
+                color: Colors.grey.shade500,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          );
-        }
+          ],
+        ),
+      );
+    }
 
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
-          itemCount: state.classesForDay.length,
-          itemBuilder: (context, index) {
-            final classData = state.classesForDay[index];
-            return _buildClassCard(classData);
-          },
+    // Order days logically (Monday first)
+    const dayOrder = [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+    ];
+    final sortedDays = schedulesByDay.keys.toList()
+      ..sort((a, b) {
+        final ai = dayOrder.indexOf(a);
+        final bi = dayOrder.indexOf(b);
+        return (ai == -1 ? 99 : ai).compareTo(bi == -1 ? 99 : bi);
+      });
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
+      itemCount: sortedDays.length,
+      itemBuilder: (context, index) {
+        final dayName = sortedDays[index];
+        final schedules = schedulesByDay[dayName]!;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2E3192), Color(0xFF4A58D1)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      dayName,
+                      style: GoogleFonts.sourceSans3(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    '${schedules.length} class${schedules.length != 1 ? 'es' : ''}',
+                    style: GoogleFonts.sourceSans3(
+                      fontSize: 13,
+                      color: Colors.grey.shade500,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ...schedules.map((schedule) => _buildClassCard(schedule)),
+            const SizedBox(height: 8),
+          ],
         );
       },
     );
   }
 
-  Widget _buildClassCard(ClassSchedule classData) {
+  Widget _buildClassCard(Schedule schedule) {
+    final timeStr =
+        '${_formatTime(schedule.startTime)} - ${_formatTime(schedule.endTime)}';
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16.0),
-      padding: const EdgeInsets.all(20.0),
+      margin: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.all(18.0),
       decoration: BoxDecoration(
-        color: Colors.lightBlue.shade50,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            classData.title,
-            style: const TextStyle(
+            'Course #${schedule.courseId}',
+            style: GoogleFonts.sourceSans3(
               fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF1A1F36),
             ),
           ),
           const SizedBox(height: 12),
@@ -174,19 +196,45 @@ class _RemindersPageContent extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.15),
+                  color: const Color(0xFF2E3192).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.access_time_outlined,
                   size: 18,
-                  color: Colors.blue.shade700,
+                  color: Color(0xFF2E3192),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Text(
-                classData.time,
-                style: TextStyle(
+                timeStr,
+                style: GoogleFonts.sourceSans3(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4CAF50).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.school_outlined,
+                  size: 18,
+                  color: Color(0xFF4CAF50),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Semester ${schedule.semester} · ${schedule.academicYear}',
+                style: GoogleFonts.sourceSans3(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: Colors.grey.shade600,
@@ -200,19 +248,19 @@ class _RemindersPageContent extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.15),
+                  color: const Color(0xFFFF9800).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  Icons.location_on_outlined,
+                child: const Icon(
+                  Icons.group_outlined,
                   size: 18,
-                  color: Colors.blue.shade700,
+                  color: Color(0xFFFF9800),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Text(
-                classData.location,
-                style: TextStyle(
+                'Section ${schedule.sectionId}',
+                style: GoogleFonts.sourceSans3(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: Colors.grey.shade600,
@@ -225,66 +273,45 @@ class _RemindersPageContent extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomNavigationBar(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: SafeArea(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Home
-            InkWell(
-              onTap: () {
-                Navigator.popUntil(context, (route) => route.isFirst);
-              },
-              child: Icon(
-                Icons.home_rounded,
-                color: Colors.grey.shade400,
-                size: 28,
+  Widget _buildErrorView(BuildContext context, String message) {
+    final isWakingUp = message.toLowerCase().contains('waking up');
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            isWakingUp ? Icons.cloud_sync : Icons.error_outline,
+            size: 60,
+            color: isWakingUp ? const Color(0xFF5BAAF0) : Colors.redAccent,
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Text(
+              isWakingUp ? 'Server is waking up. Please wait...' : message,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.sourceSans3(
+                fontSize: 18,
+                color: Colors.grey.shade800,
               ),
             ),
-            // Reminders — active
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(24),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2E3192),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.folder_outlined, color: Colors.blue.shade700, size: 28),
-                ],
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
             ),
-            // QR Scan / Attendance
-            InkWell(
-              onTap: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const QrScanPage()));
-              },
-              child: Icon(
-                Icons.access_time_outlined,
-                color: Colors.grey.shade400,
-                size: 28,
-              ),
+            onPressed: () => context.read<RemindersBloc>().add(const LoadReminders()),
+            child: Text(
+              'Retry',
+              style: GoogleFonts.sourceSans3(fontSize: 16, color: Colors.white),
             ),
-            // Profile
-            InkWell(
-              onTap: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
-              },
-              child: Icon(
-                Icons.person_outline,
-                color: Colors.grey.shade400,
-                size: 28,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

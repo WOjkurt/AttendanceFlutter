@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutterproj/Pages/login.dart';
-import 'package:flutterproj/Pages/dashboard.dart';
+import 'package:flutterproj/Pages/dashboard_page.dart';
 import 'package:flutterproj/blocs/auth_bloc.dart';
 import 'package:flutterproj/blocs/profile_bloc.dart';
-import 'firebase_options.dart';
+import 'package:flutterproj/blocs/attendance_student_bloc.dart';
+import 'package:flutterproj/blocs/schedule_bloc.dart';
+import 'package:flutterproj/blocs/course_bloc.dart';
+import 'package:flutterproj/blocs/student_bloc.dart';
+import 'package:flutterproj/blocs/reminders_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
   runApp(const Myapp());
 }
 
@@ -26,13 +27,32 @@ class Myapp extends StatelessWidget {
           create: (context) => AuthBloc()..add(const AuthStatusChecked()),
         ),
         BlocProvider(
-          create: (context) => ProfileBloc()..add(LoadProfileData()),
+          create: (context) => ProfileBloc()..add(const LoadProfile()),
+        ),
+        BlocProvider(
+          create: (context) => AttendanceStudentBloc()..add(const LoadAttendanceStudent()),
+        ),
+        BlocProvider(
+          create: (context) => ScheduleBloc()..add(const LoadSchedules()),
+        ),
+        BlocProvider(
+          create: (context) => CourseBloc()..add(const LoadCourses()),
+        ),
+        BlocProvider(
+          create: (context) => StudentBloc(),
+        ),
+        BlocProvider(
+          create: (context) => RemindersBloc()..add(const LoadReminders()),
         ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Flutter Demo',
-        theme: ThemeData(primarySwatch: Colors.blue),
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          textTheme: GoogleFonts.sourceSans3TextTheme(),
+          fontFamily: GoogleFonts.sourceSans3().fontFamily,
+        ),
         home: const AuthWrapper(),
       ),
     );

@@ -1,62 +1,78 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../controllers/token_controller.dart';
+import '../models/auth_user.dart';
+import 'api_service.dart';
 
-/// Thin service layer around Firebase Auth and Firestore.
-class AuthService {
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+class AuthService extends ApiService {
+  final TokenController _tokenController = TokenController();
 
-  // ─── Auth State ───────────────────────────────────────────────────
-  User? get currentUser => _firebaseAuth.currentUser;
+  Future<AuthUser?> checkAuthStatus() async {
+    final token = await _tokenController.getToken();
+    final loginTime = await _tokenController.getLoginTime();
 
-  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
+    if (token != null && loginTime != null) {
+      try {
+        final payload = TokenController.decodeTokenPayload(token);
+        return AuthUser(
+          uid: payload[TokenController.claimNameId] ?? '',
+          email: payload[TokenController.claimName] ?? '',
+          fullName: '', // Not in JWT — fetched separately from GET /api/User/{id}
+          role: payload[TokenController.claimRole] ?? '',
+          token: token,
+          loginTime: loginTime,
+        );
+      } catch (e) {
+        await signOut();
+        return null;
+      }
+    }
+    return null;
+  }
 
-  // ─── Registration ─────────────────────────────────────────────────
-  /// Creates a Firebase Auth user with the real school email and stores
-  /// the user document in Firestore.
-  Future<User> register({
+  Future<AuthUser> loginWithEmail({
     required String email,
     required String password,
   }) async {
-    final credential = await _firebaseAuth.createUserWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
-    );
+    try {
+      final data = await post(
+        '/LogIn',
+        body: {
+          'email': email.trim(),
+          'password': password,
+        },
+        requiresAuth: false,
+      );
 
-    final user = credential.user!;
+      final isSuccess = data['isSuccess'] as bool;
+      final token = data['token'] as String;
+      final detail = data['detail'] as String;
 
-    await _firestore.collection('users').doc(user.uid).set({
-      'uid': user.uid,
-      'email': email.trim(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+      if (!isSuccess) {
+        throw Exception(detail);
+      }
 
-    return user;
+      // Persist the token via TokenController.
+      await _tokenController.saveToken(token);
+
+      // Decode the JWT payload to extract user info.
+      final payload = await _tokenController.getTokenPayload();
+
+      return AuthUser(
+        uid: payload[TokenController.claimNameId] ?? '',
+        email: payload[TokenController.claimName] ?? '',
+        fullName: '', // Not in JWT — fetched separately from GET /api/User/{id}
+        role: payload[TokenController.claimRole] ?? '',
+        token: token,
+        loginTime: DateTime.now(),
+      );
+    } on ApiException catch (e) {
+      if (e.statusCode == 401) {
+        throw Exception('Incorrect email or password.');
+      }
+      throw Exception(e.message);
+    }
   }
 
-  // ─── Login ────────────────────────────────────────────────────────
-  /// Signs in directly with the school email and password.
-  Future<User> loginWithEmail({
-    required String email,
-    required String password,
-  }) async {
-    final credential = await _firebaseAuth.signInWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
-    );
-
-    return credential.user!;
-  }
-
-  // ─── Logout ───────────────────────────────────────────────────────
   Future<void> signOut() async {
-    await _firebaseAuth.signOut();
-  }
-
-  // ─── Firestore Data ───────────────────────────────────────────────
-  /// Fetches the Firestore user document for the given [uid].
-  Future<Map<String, dynamic>?> getUserData(String uid) async {
-    final doc = await _firestore.collection('users').doc(uid).get();
-    return doc.exists ? doc.data() : null;
+    await _tokenController.clearToken();
   }
 }

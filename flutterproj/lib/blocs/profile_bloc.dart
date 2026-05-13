@@ -1,75 +1,119 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../Pages/profile_page.dart';
+import 'package:bloc/bloc.dart';
+import 'package:equatable/equatable.dart';
+import '../models/student_model.dart';
+import '../models/user_model.dart';
+import '../services/student_service.dart';
+import '../services/user_service.dart';
+import '../controllers/token_controller.dart';
 
-// --- Events ---
-abstract class ProfileEvent {}
 
-class LoadProfileData extends ProfileEvent {}
+abstract class ProfileEvent extends Equatable {
+  const ProfileEvent();
 
-class UpdateProfileData extends ProfileEvent {
-  final UserProfile updatedProfile;
-
-  UpdateProfileData(this.updatedProfile);
+  @override
+  List<Object?> get props => [];
 }
 
-class LogoutRequested extends ProfileEvent {}
+class LoadProfile extends ProfileEvent {
+  const LoadProfile();
+}
 
-// --- States ---
-abstract class ProfileState {}
 
-class ProfileInitial extends ProfileState {}
+abstract class ProfileState extends Equatable {
+  const ProfileState();
 
-class ProfileLoading extends ProfileState {}
+  @override
+  List<Object?> get props => [];
+}
+
+class ProfileInitial extends ProfileState {
+  const ProfileInitial();
+}
+
+class ProfileLoading extends ProfileState {
+  const ProfileLoading();
+}
 
 class ProfileLoaded extends ProfileState {
-  final UserProfile userProfile;
+  final Student student;
+  final UserModel user;
 
-  ProfileLoaded(this.userProfile);
+  const ProfileLoaded({required this.student, required this.user});
+
+  @override
+  List<Object?> get props => [student, user];
 }
 
 class ProfileError extends ProfileState {
   final String message;
 
-  ProfileError(this.message);
+  const ProfileError(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }
 
-// --- BLoC ---
+// BLoC
+
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
-  ProfileBloc() : super(ProfileInitial()) {
-    on<LoadProfileData>((event, emit) async {
-      emit(ProfileLoading());
+  final StudentService _studentService;
+  final UserService _userService;
+  final TokenController _tokenController;
 
-      try {
-        // Simulate a network delay
-        await Future.delayed(const Duration(milliseconds: 800));
+  ProfileBloc({
+    StudentService? studentService,
+    UserService? userService,
+    TokenController? tokenController,
+  })  : _studentService = studentService ?? StudentService(),
+        _userService = userService ?? UserService(),
+        _tokenController = tokenController ?? TokenController(),
+        super(const ProfileInitial()) {
+    on<LoadProfile>(_onLoadProfile);
+  }
 
-        // Use the exact data from the design mockup
-        final dummyData = UserProfile(
-          greeting: "Hi, ",
-          name: "Kurt Wojtyle Rizal",
-          schoolId: "23017245",
-          courseAndYear: "Bachelor of Science in Information Technology | 3",
-          schoolEmail: "kurtwojtyle.rizal@dbto-cebu.edu.ph",
-          phoneNumber: "0913 657 86538",
-          homeAddress: "Purok Nangka, Inoburan Naga Cebu, 6000",
-          profileImageUrl: "https://i.pravatar.cc/300", // Placeholder since we don't have the real asset
-        );
-
-        emit(ProfileLoaded(dummyData));
-      } catch (e) {
-        emit(ProfileError("Failed to fetch profile data."));
+  Future<void> _onLoadProfile(
+    LoadProfile event,
+    Emitter<ProfileState> emit,
+  ) async {
+    emit(const ProfileLoading());
+    try {
+      // Step 1: get email from JWT
+      final email = await _tokenController.getEmail();
+      if (email == null || email.isEmpty) {
+        throw Exception('No email found in token.');
       }
-    });
 
-    on<LogoutRequested>((event, emit) async {
-      // In a real app, this would clear tokens, etc.
-      emit(ProfileInitial()); 
-    });
-
-    on<UpdateProfileData>((event, emit) {
-      if (state is ProfileLoaded) {
-        emit(ProfileLoaded(event.updatedProfile));
+      // Step 2: check cached DocumentSeries first
+      final cachedDocSeries = await _tokenController.getDocumentSeries();
+      if (cachedDocSeries != null) {
+        final student = await _studentService
+            .getStudentByDocumentSeries(cachedDocSeries);
+        final user = await _userService.getUserByEmail(email);
+        if (student != null && user != null) {
+          emit(ProfileLoaded(student: student, user: user));
+          return;
+        }
       }
-    });
+
+      // Step 3: find User by email (no cache hit)
+      final user = await _userService.getUserByEmail(email);
+      if (user == null) throw Exception('User not found.');
+
+      // Step 4: cache DocumentSeries for next time
+      await _tokenController.saveDocumentSeries(user.documentSeries);
+
+      // Step 5: find Student by DocumentSeries
+      final student = await _studentService
+          .getStudentByDocumentSeries(user.documentSeries);
+      if (student == null) throw Exception('Student record not found.');
+
+      emit(ProfileLoaded(student: student, user: user));
+    } catch (e) {
+      final message = e
+          .toString()
+          .replaceAll('ApiException: ', '')
+          .replaceAll('Exception: ', '');
+      emit(ProfileError(message));
+    }
   }
 }

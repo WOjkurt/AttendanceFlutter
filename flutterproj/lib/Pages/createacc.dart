@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterproj/Pages/login.dart';
 import 'package:flutterproj/Widgets/passtoggle.dart';
-import '../Pages/dashboard.dart';
+
 import '../blocs/auth_bloc.dart';
 
 class CreateAccountPage extends StatefulWidget {
@@ -28,21 +28,12 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   }
 
   void _handleRegister() {
-    String username = _usernameController.text;
-    String password = _passwordController.text;
-    
-    if (username.isNotEmpty && password.isNotEmpty) {
-      context.read<AuthBloc>().add(
-            RegisterRequested(email: username, password: password),
-          );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill out all fields.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Registration is handled by the administrator.'),
+        backgroundColor: Colors.blue,
+      ),
+    );
   }
 
   @override
@@ -142,7 +133,6 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                       'Class Track',
                       style: TextStyle(
                         fontSize: 26,
-                        fontFamily: 'InstrumentSerif',
                         fontWeight: FontWeight.w600,
                         color: primaryBlue,
                         fontStyle: FontStyle.italic,
@@ -230,7 +220,6 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                             'Create Account',
                             style: TextStyle(
                               fontSize: 18,
-                              fontFamily: 'Poppins',
                               fontWeight: FontWeight.bold,
                             ),
                           ),

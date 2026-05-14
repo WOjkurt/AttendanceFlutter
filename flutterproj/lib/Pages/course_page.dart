@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../blocs/course_bloc.dart';
 
 class CoursePage extends StatefulWidget {
-  const CoursePage({Key? key}) : super(key: key);
+  const CoursePage({super.key});
 
   @override
   State<CoursePage> createState() => _CoursePageState();
@@ -52,11 +52,18 @@ class _CoursePageState extends State<CoursePage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.library_books_outlined, size: 80, color: Colors.grey.shade300),
+                    Icon(
+                      Icons.library_books_outlined,
+                      size: 80,
+                      color: Colors.grey.shade300,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       'No courses found.',
-                      style: GoogleFonts.sourceSans3(fontSize: 18, color: Colors.grey.shade500),
+                      style: GoogleFonts.sourceSans3(
+                        fontSize: 18,
+                        color: Colors.grey.shade500,
+                      ),
                     ),
                   ],
                 ),
@@ -101,7 +108,10 @@ class _CoursePageState extends State<CoursePage> {
                             ),
                             const SizedBox(width: 12),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFE3E8FC),
                                 borderRadius: BorderRadius.circular(20),
@@ -118,7 +128,8 @@ class _CoursePageState extends State<CoursePage> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        if (course.description != null && course.description!.isNotEmpty) ...[
+                        if (course.description != null &&
+                            course.description!.isNotEmpty) ...[
                           Text(
                             course.description!,
                             style: GoogleFonts.sourceSans3(
@@ -133,7 +144,11 @@ class _CoursePageState extends State<CoursePage> {
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            Icon(Icons.person_outline, size: 16, color: Colors.grey.shade500),
+                            Icon(
+                              Icons.person_outline,
+                              size: 16,
+                              color: Colors.grey.shade500,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'Teacher ID: ${course.teacherDocumentSeries}',
@@ -152,7 +167,9 @@ class _CoursePageState extends State<CoursePage> {
               },
             );
           } else if (state is CourseError) {
-            final isWakingUp = state.message.toLowerCase().contains('waking up');
+            final isWakingUp = state.message.toLowerCase().contains(
+              'waking up',
+            );
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -160,26 +177,45 @@ class _CoursePageState extends State<CoursePage> {
                   Icon(
                     isWakingUp ? Icons.cloud_sync : Icons.error_outline,
                     size: 60,
-                    color: isWakingUp ? const Color(0xFF1BFFFF) : Colors.redAccent,
+                    color: isWakingUp
+                        ? const Color(0xFF1BFFFF)
+                        : Colors.redAccent,
                   ),
                   const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Text(
-                      isWakingUp ? 'Server is waking up. Please wait...' : state.message,
+                      isWakingUp
+                          ? 'Server is waking up. Please wait...'
+                          : state.message,
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.sourceSans3(fontSize: 18, color: Colors.grey.shade800),
+                      style: GoogleFonts.sourceSans3(
+                        fontSize: 18,
+                        color: Colors.grey.shade800,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2E3192),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 12,
+                      ),
                     ),
-                    onPressed: () => context.read<CourseBloc>().add(const LoadCourses()),
-                    child: Text('Retry', style: GoogleFonts.sourceSans3(fontSize: 16, color: Colors.white)),
+                    onPressed: () =>
+                        context.read<CourseBloc>().add(const LoadCourses()),
+                    child: Text(
+                      'Retry',
+                      style: GoogleFonts.sourceSans3(
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ],
               ),

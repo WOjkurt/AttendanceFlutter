@@ -6,7 +6,7 @@ import 'qr_scan_page.dart';
 import 'profile_page.dart';
 
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({Key? key}) : super(key: key);
+  const DashboardPage({super.key});
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -20,12 +20,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
-    _pages = const [
-      HomePage(),
-      RemindersPage(),
-      QrScanPage(),
-      ProfilePage(),
-    ];
+    _pages = const [HomePage(), RemindersPage(), QrScanPage(), ProfilePage()];
   }
 
   void _onTabSelected(int index) {
@@ -35,10 +30,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
@@ -60,11 +52,7 @@ class _DashboardPageState extends State<DashboardPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildNavItem(
-              index: 0,
-              icon: Icons.home_rounded,
-              label: 'Home',
-            ),
+            _buildNavItem(index: 0, icon: Icons.home_rounded, label: 'Home'),
             _buildNavItem(
               index: 1,
               icon: Icons.calendar_today_rounded,

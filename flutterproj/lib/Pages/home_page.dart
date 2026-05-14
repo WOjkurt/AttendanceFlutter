@@ -10,6 +10,7 @@ import '../blocs/attendance_student_bloc.dart';
 import '../models/schedule_model.dart';
 import '../models/course_model.dart';
 import 'schedule_page.dart';
+import 'profile_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -157,23 +158,29 @@ class _HomePageState extends State<HomePage> {
 
         return Row(
           children: [
-            // Avatar
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFF4A90D9).withOpacity(0.3),
-                  width: 2.5,
-                ),
-                color: const Color(0xFFE8EFF8),
+            // Avatar — tapping goes to Profile
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfilePage()),
               ),
-              child: const ClipOval(
-                child: Icon(
-                  Icons.person,
-                  size: 32,
-                  color: Color(0xFF4A90D9),
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFF4A90D9).withOpacity(0.3),
+                    width: 2.5,
+                  ),
+                  color: const Color(0xFFE8EFF8),
+                ),
+                child: const ClipOval(
+                  child: Icon(
+                    Icons.person,
+                    size: 32,
+                    color: Color(0xFF4A90D9),
+                  ),
                 ),
               ),
             ),

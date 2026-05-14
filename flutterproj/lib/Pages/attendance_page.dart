@@ -90,7 +90,8 @@ class _AttendancePageState extends State<AttendancePage> {
       ),
       body: BlocBuilder<AttendanceStudentBloc, AttendanceStudentState>(
         builder: (context, state) {
-          if (state is AttendanceStudentLoading || state is AttendanceStudentInitial) {
+          if (state is AttendanceStudentLoading ||
+              state is AttendanceStudentInitial) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is AttendanceStudentLoaded) {
             if (state.records.isEmpty) {
@@ -98,11 +99,18 @@ class _AttendancePageState extends State<AttendancePage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.fact_check_outlined, size: 80, color: Colors.grey.shade300),
+                    Icon(
+                      Icons.fact_check_outlined,
+                      size: 80,
+                      color: Colors.grey.shade300,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       'No attendance records found.',
-                      style: GoogleFonts.sourceSans3(fontSize: 18, color: Colors.grey.shade500),
+                      style: GoogleFonts.sourceSans3(
+                        fontSize: 18,
+                        color: Colors.grey.shade500,
+                      ),
                     ),
                   ],
                 ),
@@ -113,9 +121,15 @@ class _AttendancePageState extends State<AttendancePage> {
               itemCount: state.records.length,
               itemBuilder: (context, index) {
                 final record = state.records[index];
-                final statusColor = _getStatusColor(record.studentAttendanceStatus);
-                final statusText = _getStatusText(record.studentAttendanceStatus);
-                final statusIcon = _getStatusIcon(record.studentAttendanceStatus);
+                final statusColor = _getStatusColor(
+                  record.studentAttendanceStatus,
+                );
+                final statusText = _getStatusText(
+                  record.studentAttendanceStatus,
+                );
+                final statusIcon = _getStatusIcon(
+                  record.studentAttendanceStatus,
+                );
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 16),
@@ -168,7 +182,10 @@ class _AttendancePageState extends State<AttendancePage> {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: statusColor,
                             borderRadius: BorderRadius.circular(20),
@@ -196,7 +213,9 @@ class _AttendancePageState extends State<AttendancePage> {
               },
             );
           } else if (state is AttendanceStudentError) {
-            final isWakingUp = state.message.toLowerCase().contains('waking up');
+            final isWakingUp = state.message.toLowerCase().contains(
+              'waking up',
+            );
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -204,26 +223,46 @@ class _AttendancePageState extends State<AttendancePage> {
                   Icon(
                     isWakingUp ? Icons.cloud_sync : Icons.error_outline,
                     size: 60,
-                    color: isWakingUp ? const Color(0xFF1BFFFF) : Colors.redAccent,
+                    color: isWakingUp
+                        ? const Color(0xFF1BFFFF)
+                        : Colors.redAccent,
                   ),
                   const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Text(
-                      isWakingUp ? 'Server is waking up. Please wait...' : state.message,
+                      isWakingUp
+                          ? 'Server is waking up. Please wait...'
+                          : state.message,
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.sourceSans3(fontSize: 18, color: Colors.grey.shade800),
+                      style: GoogleFonts.sourceSans3(
+                        fontSize: 18,
+                        color: Colors.grey.shade800,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2E3192),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 12,
+                      ),
                     ),
-                    onPressed: () => context.read<AttendanceStudentBloc>().add(const LoadAttendanceStudent()),
-                    child: Text('Retry', style: GoogleFonts.sourceSans3(fontSize: 16, color: Colors.white)),
+                    onPressed: () => context.read<AttendanceStudentBloc>().add(
+                      const LoadAttendanceStudent(),
+                    ),
+                    child: Text(
+                      'Retry',
+                      style: GoogleFonts.sourceSans3(
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ],
               ),

@@ -10,9 +10,19 @@ import 'package:flutterproj/blocs/schedule_bloc.dart';
 import 'package:flutterproj/blocs/course_bloc.dart';
 import 'package:flutterproj/blocs/student_bloc.dart';
 import 'package:flutterproj/blocs/reminders_bloc.dart';
+import 'package:flutterproj/blocs/analytics_bloc.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // CLEAR CACHE TO REMOVE ANY STALE ERRORS
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove('analytics_cache_result');
+  await prefs.remove('analytics_cache_hash');
+  await prefs.remove('analytics_cache_timestamp');
+  
   runApp(const Myapp());
 }
 
@@ -42,7 +52,16 @@ class Myapp extends StatelessWidget {
           create: (context) => StudentBloc(),
         ),
         BlocProvider(
-          create: (context) => RemindersBloc()..add(const LoadReminders()),
+          create: (context) {
+            final scheduleState = context.read<ScheduleBloc>().state;
+            if (scheduleState is ScheduleLoaded) {
+              return RemindersBloc()..add(LoadReminders(scheduleState.schedules));
+            }
+            return RemindersBloc()..add(const LoadReminders());
+          },
+        ),
+        BlocProvider(
+          create: (context) => AnalyticsBloc(),
         ),
       ],
       child: MaterialApp(
@@ -50,8 +69,8 @@ class Myapp extends StatelessWidget {
         title: 'Flutter Demo',
         theme: ThemeData(
           primarySwatch: Colors.blue,
-          textTheme: GoogleFonts.sourceSans3TextTheme(),
-          fontFamily: GoogleFonts.sourceSans3().fontFamily,
+          textTheme: GoogleFonts.poppinsTextTheme(),
+          fontFamily: GoogleFonts.poppins().fontFamily,
         ),
         home: const AuthWrapper(),
       ),

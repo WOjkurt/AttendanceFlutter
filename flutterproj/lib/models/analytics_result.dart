@@ -12,9 +12,13 @@ class AnalyticsResult {
   /// Timestamp when this result was produced.
   final DateTime generatedAt;
 
+  /// AI-generated insights about the student's attendance patterns.
+  final List<String> insights;
+
   const AnalyticsResult({
     required this.meritScore,
     required this.generatedAt,
+    this.insights = const [],
   });
 
   // ─── JSON Serialisation (for shared_preferences cache) ──────────────────
@@ -24,12 +28,17 @@ class AnalyticsResult {
       meritScore: (json['meritScore'] as num?)?.toInt() ?? 100,
       generatedAt: DateTime.tryParse(json['generatedAt']?.toString() ?? '') ??
           DateTime.now(),
+      insights: (json['insights'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
     );
   }
 
   Map<String, dynamic> toJson() => {
         'meritScore': meritScore,
         'generatedAt': generatedAt.toIso8601String(),
+        'insights': insights,
       };
 
   /// Convenience: encode directly to a JSON string for cache storage.
@@ -40,5 +49,6 @@ class AnalyticsResult {
       AnalyticsResult.fromJson(jsonDecode(source) as Map<String, dynamic>);
 
   @override
-  String toString() => 'AnalyticsResult(meritScore: $meritScore)';
+  String toString() =>
+      'AnalyticsResult(meritScore: $meritScore, insights: $insights)';
 }

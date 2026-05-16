@@ -80,3 +80,23 @@ class Schedule {
     );
   }
 }
+
+class DaySchedule {
+  final String title;
+  final String startTime;
+  final String endTime;
+
+  DaySchedule({
+    required this.title,
+    required this.startTime,
+    required this.endTime,
+  });
+
+  factory DaySchedule.fromJson(Map<String, dynamic> json) {
+    return DaySchedule(
+      title: json['title'] ?? '',
+      startTime: json['startTime'] ?? '',
+      endTime: json['endTime'] ?? '',
+    );
+  }
+}

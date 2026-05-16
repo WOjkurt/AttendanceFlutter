@@ -1,44 +1,78 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:equatable/equatable.dart';
 
+// --- Events ---
 
-abstract class EditProfileEvent {}
+abstract class EditProfileEvent extends Equatable {
+  const EditProfileEvent();
+
+  @override
+  List<Object?> get props => [];
+}
 
 class UpdateProfileSubmitted extends EditProfileEvent {
   final String greeting;
   final String? profileImagePath;
 
-  UpdateProfileSubmitted({
+  const UpdateProfileSubmitted({
     required this.greeting,
     this.profileImagePath,
   });
+
+  @override
+  List<Object?> get props => [greeting, profileImagePath];
 }
 
+// --- States ---
 
-abstract class EditProfileState {}
+abstract class EditProfileState extends Equatable {
+  const EditProfileState();
 
-class EditProfileInitial extends EditProfileState {}
+  @override
+  List<Object?> get props => [];
+}
 
-class EditProfileLoading extends EditProfileState {}
+class EditProfileInitial extends EditProfileState {
+  const EditProfileInitial();
+}
 
-class EditProfileSuccess extends EditProfileState {}
+class EditProfileLoading extends EditProfileState {
+  const EditProfileLoading();
+}
+
+class EditProfileSuccess extends EditProfileState {
+  const EditProfileSuccess();
+}
 
 class EditProfileError extends EditProfileState {
   final String message;
 
-  EditProfileError(this.message);
+  const EditProfileError(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }
 
-// BLoC
+// --- BLoC ---
+
+/// Profile editing.
+///
+/// NOTE: The backend does not currently expose a `PUT /api/User` endpoint,
+/// so profile editing is not yet functional.
 class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
-  EditProfileBloc() : super(EditProfileInitial()) {
+  EditProfileBloc() : super(const EditProfileInitial()) {
     on<UpdateProfileSubmitted>((event, emit) async {
-      emit(EditProfileLoading());
+      emit(const EditProfileLoading());
       try {
-        // Simulate a network request to update profile
-        await Future.delayed(const Duration(seconds: 1));
-        emit(EditProfileSuccess());
+        // TODO: Replace with real API call once PUT /api/User is available.
+        // Example:
+        //   await _userService.updateUser(userId, { ... });
+        //   emit(const EditProfileSuccess());
+        emit(const EditProfileError(
+          'Profile editing is not yet available.',
+        ));
       } catch (e) {
-        emit(EditProfileError("Failed to update profile."));
+        emit(const EditProfileError('Failed to update profile.'));
       }
     });
   }

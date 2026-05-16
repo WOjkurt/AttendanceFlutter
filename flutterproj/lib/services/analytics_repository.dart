@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import '../models/analytics_result.dart';
 
 /// Repository that orchestrates AI analytics data flow.
@@ -153,24 +156,35 @@ class AnalyticsRepository {
   /// ```
   /// ────────────────────────────────────────────────────────────────────────
   Future<AnalyticsResult> _callAiService(Map<String, dynamic> data) async {
-    // Simulate network latency for realistic UX during development.
-    await Future.delayed(const Duration(milliseconds: 800));
+    try {
+      final url = Uri.parse('https://ai-integration-qbk5.onrender.com/analytics');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'dataset': jsonEncode(data)}),
+      ).timeout(const Duration(seconds: 120));
 
-    // ── Stub: compute merit deductions locally ──────────────────────────
-    // Starting merit = 100.
-    // Deductions:  absent = -5,  late = -3
-    // TODO: Replace this local computation with the real AI service call
-    //       once the AI endpoint is available. The AI may also factor in
-    //       improper uniform and other violations.
-    const startingMerit = 100;
-    final absences = (data['totalAbsences'] as int?) ?? 0;
-    final lates = (data['totalLates'] as int?) ?? 0;
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final body = jsonDecode(response.body);
+        final analysis = body['analysis'] as Map<String, dynamic>;
 
-    final score = (startingMerit - (absences * 5) - (lates * 3)).clamp(0, 100);
+        // Ensure generatedAt is present if the AI response omitted it
+        if (!analysis.containsKey('generatedAt')) {
+          analysis['generatedAt'] = DateTime.now().toIso8601String();
+        }
 
-    return AnalyticsResult(
-      meritScore: score,
-      generatedAt: DateTime.now(),
-    );
+        return AnalyticsResult.fromJson(analysis);
+      } else {
+        throw Exception('AI Backend returned status code ${response.statusCode}');
+      }
+    } on TimeoutException {
+      throw Exception(
+        'AI service is taking too long to respond. The server may be waking up — please try again in a moment.',
+      );
+    } on SocketException {
+      throw Exception('No internet connection. Please check your network and try again.');
+    } catch (e) {
+      throw Exception('Failed to connect to AI service: $e');
+    }
   }
 }

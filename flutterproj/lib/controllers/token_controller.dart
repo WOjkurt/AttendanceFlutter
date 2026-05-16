@@ -22,7 +22,7 @@ class TokenController {
   final FlutterSecureStorage _storage;
 
   TokenController({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   // ─── Token persistence ──────────────────────────────────────────────
 
@@ -56,13 +56,20 @@ class TokenController {
 
   // ─── Document series cache ──────────────────────────────────────────
 
-  /// Caches the user's DocumentSeries so subsequent profile loads
-  /// don't need to re-fetch the full user list.
+  /// Caches the student's DocumentSeries (e.g. from QR code/attendance)
+  /// so subsequent profile loads don't need to re-fetch the full user list.
   Future<void> saveDocumentSeries(String documentSeries) async {
     await _storage.write(key: _docSeriesKey, value: documentSeries);
   }
 
-  /// Reads the cached DocumentSeries. Returns `null` if not cached.
+  /// Returns the student's DocumentSeries.
+  ///
+  /// This only relies on the secure storage cache which is populated
+  /// via the attendance endpoint, deliberately avoiding the User
+  /// Document Series claim from the JWT.
+  ///
+  /// Returns `null` if the student hasn't recorded attendance yet
+  /// or if it hasn't been cached.
   Future<String?> getDocumentSeries() async {
     return await _storage.read(key: _docSeriesKey);
   }

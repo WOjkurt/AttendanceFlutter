@@ -13,7 +13,7 @@ class CurrentEvent {
   });
 }
 
-/// Represents an upcoming reminder item shown on the dashboard.
+/// Upcoming reminder on the dashboard
 class UpcomingReminder {
   final String title;
   final String subtitle;

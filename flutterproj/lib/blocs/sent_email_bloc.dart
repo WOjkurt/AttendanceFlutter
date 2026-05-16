@@ -1,43 +1,73 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:equatable/equatable.dart';
 
-abstract class SentEmailEvent {}
+// --- Events ---
 
-class LoadSentEmails extends SentEmailEvent {}
+abstract class SentEmailEvent extends Equatable {
+  const SentEmailEvent();
 
-abstract class SentEmailState {}
+  @override
+  List<Object?> get props => [];
+}
 
-class SentEmailInitial extends SentEmailState {}
+class LoadSentEmails extends SentEmailEvent {
+  const LoadSentEmails();
+}
 
-class SentEmailLoading extends SentEmailState {}
+// --- States ---
+
+abstract class SentEmailState extends Equatable {
+  const SentEmailState();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class SentEmailInitial extends SentEmailState {
+  const SentEmailInitial();
+}
+
+class SentEmailLoading extends SentEmailState {
+  const SentEmailLoading();
+}
 
 class SentEmailLoaded extends SentEmailState {
   final List<String> emails;
 
-  SentEmailLoaded(this.emails);
+  const SentEmailLoaded(this.emails);
+
+  @override
+  List<Object?> get props => [emails];
 }
 
 class SentEmailError extends SentEmailState {
   final String message;
 
-  SentEmailError(this.message);
+  const SentEmailError(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }
 
 // --- BLoC ---
+
+/// Sent email history.
+///
+/// NOTE: There is no backend email endpoint yet. This BLoC emits an error
+/// state until a real email service is integrated.
 class SentEmailBloc extends Bloc<SentEmailEvent, SentEmailState> {
-  SentEmailBloc() : super(SentEmailInitial()) {
+  SentEmailBloc() : super(const SentEmailInitial()) {
     on<LoadSentEmails>((event, emit) async {
-      emit(SentEmailLoading());
-      
+      emit(const SentEmailLoading());
+
       try {
-        // Simulating a network fetch delay
-        await Future.delayed(const Duration(seconds: 1));
-        
-        // Emitting our loaded state with dummy data
-        emit(SentEmailLoaded([
-          "Morning Assembly & SYM"
-        ]));
+        // TODO: Replace with real email service call when endpoint is ready.
+        // Example:
+        //   final emails = await _emailService.getSentEmails();
+        //   emit(SentEmailLoaded(emails));
+        emit(const SentEmailError('Email feature is not yet available.'));
       } catch (e) {
-        emit(SentEmailError("Failed to fetch sent emails."));
+        emit(const SentEmailError('Failed to fetch sent emails.'));
       }
     });
   }

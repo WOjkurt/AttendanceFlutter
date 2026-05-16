@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import '../models/attendance_student_model.dart';
 import '../services/attendance_student_service.dart';
 
+// ─── Events ──────────────────────────────────────────────────────────────────
 
 abstract class AttendanceStudentEvent extends Equatable {
   const AttendanceStudentEvent();
@@ -15,6 +16,7 @@ class LoadAttendanceStudent extends AttendanceStudentEvent {
   const LoadAttendanceStudent();
 }
 
+// ─── States ──────────────────────────────────────────────────────────────────
 
 abstract class AttendanceStudentState extends Equatable {
   const AttendanceStudentState();
@@ -42,32 +44,47 @@ class AttendanceStudentLoaded extends AttendanceStudentState {
 
 class AttendanceStudentError extends AttendanceStudentState {
   final String message;
+  final bool isColdStart;
 
-  const AttendanceStudentError(this.message);
+  const AttendanceStudentError(this.message, {this.isColdStart = false});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, isColdStart];
 }
 
-// BLoC 
+// ─── BLoC ────────────────────────────────────────────────────────────────────
 
-class AttendanceStudentBloc extends Bloc<AttendanceStudentEvent, AttendanceStudentState> {
+class AttendanceStudentBloc
+    extends Bloc<AttendanceStudentEvent, AttendanceStudentState> {
   final AttendanceStudentService _attendanceStudentService;
 
   AttendanceStudentBloc({AttendanceStudentService? attendanceStudentService})
-      : _attendanceStudentService = attendanceStudentService ?? AttendanceStudentService(),
-        super(const AttendanceStudentInitial()) {
+    : _attendanceStudentService =
+          attendanceStudentService ?? AttendanceStudentService(),
+      super(const AttendanceStudentInitial()) {
     on<LoadAttendanceStudent>(_onLoadAttendanceStudent);
   }
 
-  Future<void> _onLoadAttendanceStudent(LoadAttendanceStudent event, Emitter<AttendanceStudentState> emit) async {
+  Future<void> _onLoadAttendanceStudent(
+    LoadAttendanceStudent event,
+    Emitter<AttendanceStudentState> emit,
+  ) async {
     emit(const AttendanceStudentLoading());
     try {
-      final records = await _attendanceStudentService.getAttendanceByStudent();
+      final records = await _attendanceStudentService.getMyAttendance();
       emit(AttendanceStudentLoaded(records));
     } catch (e) {
-      final message = e.toString().replaceAll('ApiException: ', '').replaceAll('Exception: ', '');
-      emit(AttendanceStudentError(message));
+      final message = e
+          .toString()
+          .replaceAll('ApiException: ', '')
+          .replaceAll('Exception: ', '');
+
+      final isColdStart =
+          message.contains('503') ||
+          message.contains('cold') ||
+          message.contains('waking');
+
+      emit(AttendanceStudentError(message, isColdStart: isColdStart));
     }
   }
 }

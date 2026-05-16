@@ -1,4 +1,3 @@
-import 'dart:convert';
 import '../controllers/token_controller.dart';
 
 class AuthUser {

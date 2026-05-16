@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'profile_page.dart';
 import '../blocs/attendance_status_bloc.dart';
+import '../blocs/attendance_student_bloc.dart';
 import '../blocs/analytics_bloc.dart';
 
 class AttendanceStatusPage extends StatelessWidget {
@@ -13,8 +13,15 @@ class AttendanceStatusPage extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) =>
-              AttendanceStatusBloc()..add(LoadAttendanceStatus()),
+          create: (context) {
+            final bloc = AttendanceStatusBloc();
+            // Feed attendance records if already loaded
+            final attState = context.read<AttendanceStudentBloc>().state;
+            if (attState is AttendanceStudentLoaded) {
+              bloc.add(LoadAttendanceStatus(attState.records));
+            }
+            return bloc;
+          },
         ),
         BlocProvider(
           create: (context) => AnalyticsBloc(),
@@ -56,7 +63,7 @@ class AttendanceStatusPage extends StatelessWidget {
                             padding: const EdgeInsets.only(top: 100.0),
                             child: Text(
                               state.errorMessage,
-                              style: GoogleFonts.sourceSans3(color: Colors.red),
+                              style: GoogleFonts.poppins(color: Colors.red),
                             ),
                           ),
                         );
@@ -69,7 +76,7 @@ class AttendanceStatusPage extends StatelessWidget {
                                   const EdgeInsets.symmetric(horizontal: 24.0),
                               child: Text(
                                 state.statusMessage,
-                                style: GoogleFonts.sourceSans3(
+                                style: GoogleFonts.poppins(
                                   fontSize: 16,
                                   color: Colors.grey.shade600,
                                   fontWeight: FontWeight.w600,
@@ -112,11 +119,7 @@ class AttendanceStatusPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF2E3192), Color(0xFF1BFFFF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Color(0xFF2E3192),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(30),
           bottomRight: Radius.circular(30),
@@ -135,7 +138,7 @@ class AttendanceStatusPage extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
@@ -146,24 +149,16 @@ class AttendanceStatusPage extends StatelessWidget {
                 ),
               ),
               
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ProfilePage()),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const CircleAvatar(
-                    radius: 20,
-                    backgroundColor: Color(0xFFE3E8FC),
-                    child: Icon(Icons.person_rounded, color: Color(0xFF2E3192), size: 24),
-                  ),
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: const CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Color(0xFFE3E8FC),
+                  child: Icon(Icons.person_rounded, color: Color(0xFF2E3192), size: 24),
                 ),
               ),
             ],
@@ -171,7 +166,7 @@ class AttendanceStatusPage extends StatelessWidget {
           
           Text(
             'Summary',
-            style: GoogleFonts.sourceSans3(
+            style: GoogleFonts.poppins(
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -184,7 +179,7 @@ class AttendanceStatusPage extends StatelessWidget {
   }
 
   Widget _buildSummaryGrid(AttendanceStatusLoaded state) {
-    if (state.totalPresents == null || state.totalAbsences == null || state.totalLates == null) {
+    if (state.totalRecords == 0) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Container(
@@ -197,7 +192,7 @@ class AttendanceStatusPage extends StatelessWidget {
           child: Center(
             child: Text(
               "No attendance data received yet.",
-              style: GoogleFonts.sourceSans3(
+              style: GoogleFonts.poppins(
                 color: Colors.grey,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -257,7 +252,7 @@ class AttendanceStatusPage extends StatelessWidget {
           const SizedBox(width: 14),
           Text(
             label,
-            style: GoogleFonts.sourceSans3(
+            style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: color.shade800,
@@ -266,7 +261,7 @@ class AttendanceStatusPage extends StatelessWidget {
           const Spacer(),
           Text(
             value?.toString() ?? '-',
-            style: GoogleFonts.sourceSans3(
+            style: GoogleFonts.poppins(
               fontSize: 24,
               fontWeight: FontWeight.w800,
               color: color.shade700,
@@ -298,17 +293,13 @@ class AttendanceStatusPage extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 24.0),
           padding: const EdgeInsets.all(24.0),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1A50FE), Color(0xFF6B8AFF)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
+            color: const Color(0xFF2E3192),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF1A50FE).withOpacity(0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 25,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
@@ -317,7 +308,7 @@ class AttendanceStatusPage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.star_rounded, color: Colors.white, size: 36),
@@ -329,7 +320,7 @@ class AttendanceStatusPage extends StatelessWidget {
                   children: [
                     Text(
                       'Student Merit',
-                      style: GoogleFonts.sourceSans3(
+                      style: GoogleFonts.poppins(
                         color: Colors.white70,
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -338,7 +329,7 @@ class AttendanceStatusPage extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       displayScore,
-                      style: GoogleFonts.sourceSans3(
+                      style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontSize: 36,
                         fontWeight: FontWeight.w800,
@@ -368,7 +359,7 @@ class AttendanceStatusPage extends StatelessWidget {
           ),
           child: Text(
             'Back to Home',
-            style: GoogleFonts.sourceSans3(
+            style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: const Color(0xFF2E3192),

@@ -25,20 +25,20 @@ class Student {
 
   factory Student.fromJson(Map<String, dynamic> json) {
     return Student(
-      userDocumentSeries: json['UserDocumentSeries'] ?? '',
-      documentSeries: json['DocumentSeries'] ?? '',
-      programId: json['Program_ID'] ?? 0,
-      departmentId: json['Department_ID'] ?? 0,
-      sectionId: json['SectionID'] ?? 0,
-      yearLevel: json['Year_Level'] ?? 0,
-      createdAt: json['CreatedAt'] != null 
-          ? DateTime.parse(json['CreatedAt']) 
+      userDocumentSeries: json['UserDocumentSeries'] ?? json['userDocumentSeries'] ?? '',
+      documentSeries: json['DocumentSeries'] ?? json['documentSeries'] ?? '',
+      programId: json['Program_ID'] ?? json['programId'] ?? 0,
+      departmentId: json['Department_ID'] ?? json['departmentId'] ?? 0,
+      sectionId: json['SectionID'] ?? json['sectionId'] ?? 0,
+      yearLevel: json['Year_Level'] ?? json['yearLevel'] ?? 0,
+      createdAt: json['CreatedAt'] != null || json['createdAt'] != null
+          ? DateTime.parse(json['CreatedAt'] ?? json['createdAt']) 
           : DateTime.now(),
-      lastUpdatedAt: json['LastUpdatedAt'] != null 
-          ? DateTime.parse(json['LastUpdatedAt']) 
+      lastUpdatedAt: json['LastUpdatedAt'] != null || json['lastUpdatedAt'] != null
+          ? DateTime.parse(json['LastUpdatedAt'] ?? json['lastUpdatedAt']) 
           : DateTime.now(),
-      createdBy: json['CreatedBy'],
-      lastUpdatedBy: json['LastUpdatedBy'],
+      createdBy: json['CreatedBy'] ?? json['createdBy'],
+      lastUpdatedBy: json['LastUpdatedBy'] ?? json['lastUpdatedBy'],
     );
   }
 

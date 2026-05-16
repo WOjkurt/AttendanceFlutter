@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import '../services/auth_service.dart';
+import '../services/attendance_student_service.dart';
+import '../controllers/token_controller.dart';
 import '../models/auth_user.dart';
-
 
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
@@ -16,7 +19,6 @@ class AuthStatusChecked extends AuthEvent {
   const AuthStatusChecked();
 }
 
-
 class LoginRequested extends AuthEvent {
   final String email;
   final String password;
@@ -27,12 +29,9 @@ class LoginRequested extends AuthEvent {
   List<Object?> get props => [email, password];
 }
 
-
 class LogoutRequested extends AuthEvent {
   const LogoutRequested();
 }
-
-
 
 abstract class AuthState extends Equatable {
   const AuthState();
@@ -41,17 +40,14 @@ abstract class AuthState extends Equatable {
   List<Object?> get props => [];
 }
 
-/// Not yet determined — used during startup check.
 class AuthInitial extends AuthState {
   const AuthInitial();
 }
 
-/// An async operation is in progress (login / logout).
 class AuthLoading extends AuthState {
   const AuthLoading();
 }
 
-/// User is signed in.
 class AuthAuthenticated extends AuthState {
   final AuthUser user;
 
@@ -61,12 +57,10 @@ class AuthAuthenticated extends AuthState {
   List<Object?> get props => [user.uid];
 }
 
-/// User is signed out.
 class AuthUnauthenticated extends AuthState {
   const AuthUnauthenticated();
 }
 
-/// An error occurred during login.
 class AuthError extends AuthState {
   final String message;
 
@@ -76,13 +70,20 @@ class AuthError extends AuthState {
   List<Object?> get props => [message];
 }
 
-// BLoC 
+// BLoC
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthService _authService;
+  final AttendanceStudentService _attendanceService;
+  final TokenController _tokenController;
   Timer? _sessionTimer;
 
-  AuthBloc({AuthService? authService})
-      : _authService = authService ?? AuthService(),
+  AuthBloc({
+    AuthService? authService,
+    AttendanceStudentService? attendanceService,
+    TokenController? tokenController,
+  })  : _authService = authService ?? AuthService(),
+        _attendanceService = attendanceService ?? AttendanceStudentService(),
+        _tokenController = tokenController ?? TokenController(),
         super(const AuthInitial()) {
     on<AuthStatusChecked>(_onAuthStatusChecked);
     on<LoginRequested>(_onLoginRequested);
@@ -95,13 +96,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     return super.close();
   }
 
-  //Handlers
+  // Handlers
   Future<void> _onAuthStatusChecked(
     AuthStatusChecked event,
     Emitter<AuthState> emit,
   ) async {
     final user = await _authService.checkAuthStatus();
-    
+
     if (user != null) {
       final expirationTime = user.loginTime.add(const Duration(hours: 1));
       if (DateTime.now().isAfter(expirationTime)) {
@@ -109,8 +110,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(const AuthUnauthenticated());
         return;
       }
-      
+
       _setSessionTimer(user);
+
+      // Cache DS if not already stored (e.g. returning user, app restart).
+      await _tryCacheStudentDocumentSeries();
+
       emit(AuthAuthenticated(user));
     } else {
       emit(const AuthUnauthenticated());
@@ -128,10 +133,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
       );
       _setSessionTimer(user);
+
+      // Cache DS right after login.
+      await _tryCacheStudentDocumentSeries();
+
       emit(AuthAuthenticated(user));
     } catch (e) {
-      // Clean up the Exception string for the UI
       final message = e.toString().replaceAll('Exception: ', '');
+      debugPrint('LOGIN ERROR RAW: $e');
       emit(AuthError(message));
     }
   }
@@ -150,6 +159,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
+  /// Attempts to fetch and cache the student's DocumentSeries from
+  /// the attendance endpoint. Skips silently if already cached or
+  /// if the student has no attendance records yet.
+  Future<void> _tryCacheStudentDocumentSeries() async {
+    try {
+      final existing = await _tokenController.getDocumentSeries();
+      if (existing != null) return; // already cached, nothing to do
+
+      final ds = await _attendanceService.fetchStudentDocumentSeries();
+      if (ds != null) {
+        await _tokenController.saveDocumentSeries(ds);
+        if (kDebugMode) debugPrint('Student DocumentSeries cached: $ds');
+      } else {
+        if (kDebugMode) debugPrint('No attendance records yet — DS not cached.');
+      }
+    } catch (e) {
+      // DS caching failing must never block the auth flow.
+      if (kDebugMode) debugPrint('Could not cache student DS: $e');
+    }
+  }
 
   void _setSessionTimer(AuthUser user) {
     _sessionTimer?.cancel();

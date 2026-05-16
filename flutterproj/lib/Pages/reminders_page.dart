@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../blocs/reminders_bloc.dart';
+import '../blocs/schedule_bloc.dart';
+import '../blocs/course_bloc.dart';
 import '../models/schedule_model.dart';
+import '../models/course_model.dart';
 
-class RemindersPage extends StatelessWidget {
+class RemindersPage extends StatefulWidget {
   const RemindersPage({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return const _RemindersPageContent();
-  }
+  State<RemindersPage> createState() => _RemindersPageState();
 }
 
-class _RemindersPageContent extends StatelessWidget {
-  const _RemindersPageContent({Key? key}) : super(key: key);
+class _RemindersPageState extends State<RemindersPage> {
+  @override
+  void initState() {
+    super.initState();
+    final state = context.read<ScheduleBloc>().state;
+    if (state is! DayScheduleLoaded && state is! ScheduleLoading) {
+      context.read<ScheduleBloc>().add(const LoadSchedule());
+    }
+  }
 
   String _formatTime(String time) {
     try {
@@ -33,53 +40,52 @@ class _RemindersPageContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FC),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: 10),
-            Expanded(
-              child: BlocBuilder<RemindersBloc, RemindersState>(
-                builder: (context, state) {
-                  if (state is RemindersLoading || state is RemindersInitial) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (state is RemindersLoaded) {
-                    return _buildScheduleList(state.schedulesByDay);
-                  } else if (state is RemindersError) {
-                    return _buildErrorView(context, state.message);
-                  }
-                  return const Center(child: Text('Unknown state'));
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-      // Bottom nav is handled by DashboardPage
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Reminders',
-            style: GoogleFonts.sourceSans3(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF1A1F36),
-            ),
+      appBar: AppBar(
+        title: Text(
+          'Class Schedule',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            fontSize: 24,
+            color: Colors.white,
           ),
-        ],
+        ),
+        centerTitle: true,
+        backgroundColor: const Color(0xFF2E3192),
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.3),
+      ),
+      body: BlocBuilder<ScheduleBloc, ScheduleState>(
+        builder: (context, state) {
+          if (state is ScheduleLoading || state is ScheduleInitial) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(color: Color(0xFF2E3192)),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Loading...',
+                    style: GoogleFonts.poppins(
+                      color: Colors.grey.shade500,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          } else if (state is DayScheduleLoaded) {
+            return _buildScheduleList(state.schedules);
+          } else if (state is ScheduleError) {
+            return _buildErrorView(context, state);
+          }
+          return const SizedBox.shrink();
+        },
       ),
     );
   }
 
-  Widget _buildScheduleList(Map<String, List<Schedule>> schedulesByDay) {
-    if (schedulesByDay.isEmpty) {
+  Widget _buildScheduleList(List<DaySchedule> schedules) {
+    if (schedules.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -87,8 +93,8 @@ class _RemindersPageContent extends StatelessWidget {
             Icon(Icons.event_available_outlined, size: 72, color: Colors.grey.shade300),
             const SizedBox(height: 16),
             Text(
-              'No schedules found.',
-              style: GoogleFonts.sourceSans3(
+              'No classes today.',
+              style: GoogleFonts.poppins(
                 fontSize: 18,
                 color: Colors.grey.shade500,
                 fontWeight: FontWeight.w600,
@@ -99,219 +105,174 @@ class _RemindersPageContent extends StatelessWidget {
       );
     }
 
-    // Order days logically (Monday first)
-    const dayOrder = [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
-    ];
-    final sortedDays = schedulesByDay.keys.toList()
-      ..sort((a, b) {
-        final ai = dayOrder.indexOf(a);
-        final bi = dayOrder.indexOf(b);
-        return (ai == -1 ? 99 : ai).compareTo(bi == -1 ? 99 : bi);
-      });
-
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
-      itemCount: sortedDays.length,
+      padding: const EdgeInsets.all(24.0),
+      itemCount: schedules.length,
       itemBuilder: (context, index) {
-        final dayName = sortedDays[index];
-        final schedules = schedulesByDay[dayName]!;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12.0),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF2E3192), Color(0xFF4A58D1)],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      dayName,
-                      style: GoogleFonts.sourceSans3(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '${schedules.length} class${schedules.length != 1 ? 'es' : ''}',
-                    style: GoogleFonts.sourceSans3(
-                      fontSize: 13,
-                      color: Colors.grey.shade500,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ...schedules.map((schedule) => _buildClassCard(schedule)),
-            const SizedBox(height: 8),
-          ],
-        );
+        return _buildClassCard(schedules[index]);
       },
     );
   }
 
-  Widget _buildClassCard(Schedule schedule) {
-    final timeStr =
-        '${_formatTime(schedule.startTime)} - ${_formatTime(schedule.endTime)}';
+  Widget _buildClassCard(DaySchedule schedule) {
+    final timeStr = '${_formatTime(schedule.startTime)} - ${_formatTime(schedule.endTime)}';
+
+    String title = schedule.title;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12.0),
-      padding: const EdgeInsets.all(18.0),
+      margin: const EdgeInsets.only(bottom: 16.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16.0),
+        child: Container(
+          decoration: const BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: Color(0xFF2E3192),
+                width: 4.0,
+              ),
+            ),
+          ),
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Course #${schedule.courseId}',
-            style: GoogleFonts.sourceSans3(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF1A1F36),
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF2E3192),
             ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE3E8FC),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.access_time_filled, size: 16, color: Color(0xFF2E3192)),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                timeStr,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2E3192).withOpacity(0.1),
+                  color: const Color(0xFFE3E8FC),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
-                  Icons.access_time_outlined,
-                  size: 18,
-                  color: Color(0xFF2E3192),
-                ),
+                child: const Icon(Icons.location_on_rounded, size: 16, color: Color(0xFF2E3192)),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Text(
-                timeStr,
-                style: GoogleFonts.sourceSans3(
+                'Class', 
+                style: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.school_outlined,
-                  size: 18,
-                  color: Color(0xFF4CAF50),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'Semester ${schedule.semester} · ${schedule.academicYear}',
-                style: GoogleFonts.sourceSans3(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF9800).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.group_outlined,
-                  size: 18,
-                  color: Color(0xFFFF9800),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'Section ${schedule.sectionId}',
-                style: GoogleFonts.sourceSans3(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey.shade600,
+                  color: Colors.grey.shade700,
                 ),
               ),
             ],
           ),
         ],
       ),
+      ),
+      ),
     );
   }
 
-  Widget _buildErrorView(BuildContext context, String message) {
-    final isWakingUp = message.toLowerCase().contains('waking up');
+  Widget _buildErrorView(BuildContext context, ScheduleError state) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            isWakingUp ? Icons.cloud_sync : Icons.error_outline,
-            size: 60,
-            color: isWakingUp ? const Color(0xFF5BAAF0) : Colors.redAccent,
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Text(
-              isWakingUp ? 'Server is waking up. Please wait...' : message,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.sourceSans3(
-                fontSize: 18,
-                color: Colors.grey.shade800,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              state.isColdStart ? Icons.cloud_off_rounded : Icons.error_outline_rounded,
+              size: 80,
+              color: state.isColdStart ? const Color(0xFF5BAAF0) : Colors.redAccent,
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: state.isColdStart ? const Color(0xFFE8F4FD) : Colors.red.shade50,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    state.isColdStart ? 'Server is waking up...' : 'Failed to load schedule',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: state.isColdStart ? const Color(0xFF2E86C1) : Colors.red.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    state.isColdStart
+                        ? 'The server takes 30–60 seconds to wake up. Please try again.'
+                        : state.message,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: state.isColdStart 
+                          ? const Color(0xFF2E86C1).withOpacity(0.8) 
+                          : Colors.red.shade700.withOpacity(0.8),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2E3192),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () => context.read<ScheduleBloc>().add(const LoadSchedule()),
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(
+                'Try Again',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E3192),
+                foregroundColor: Colors.white,
+                elevation: 4,
+                shadowColor: Colors.black.withOpacity(0.2),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50),
+                ),
+              ),
             ),
-            onPressed: () => context.read<RemindersBloc>().add(const LoadReminders()),
-            child: Text(
-              'Retry',
-              style: GoogleFonts.sourceSans3(fontSize: 16, color: Colors.white),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

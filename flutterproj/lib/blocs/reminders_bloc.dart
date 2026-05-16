@@ -13,7 +13,14 @@ abstract class RemindersEvent extends Equatable {
 }
 
 class LoadReminders extends RemindersEvent {
-  const LoadReminders();
+  /// If schedules are already loaded (e.g. from ScheduleBloc),
+  /// pass them here to avoid a duplicate API call.
+  final List<Schedule>? schedules;
+
+  const LoadReminders([this.schedules]);
+
+  @override
+  List<Object?> get props => [schedules];
 }
 
 // --- States ---
@@ -68,7 +75,9 @@ class RemindersBloc extends Bloc<RemindersEvent, RemindersState> {
   ) async {
     emit(const RemindersLoading());
     try {
-      final schedules = await _scheduleService.getAllSchedules();
+      // Use pre-loaded schedules if available, otherwise fetch from API.
+      final schedules =
+          event.schedules ?? await _scheduleService.getAllSchedules();
 
       // Group schedules by dayName
       final grouped = <String, List<Schedule>>{};

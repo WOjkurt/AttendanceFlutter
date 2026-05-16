@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterproj/Widgets/passtoggle.dart';
 import '../Pages/createacc.dart';
 import '../blocs/auth_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -42,9 +43,9 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryBlue = Color(0xFF1A6FC4);
-    const Color labelBlue = Color(0xFF2563A8);
-    const Color backgroundColor = Color(0xFFE8F0F7);
+    const Color primaryBlue = Color(0xFF2E3192);
+    const Color labelBlue = Color(0xFF2E3192);
+    const Color backgroundColor = Color(0xFFF4F7FC);
 
     return BlocListener<AuthBloc, AuthState>(
       listenWhen: (previous, current) => current is AuthError,
@@ -65,13 +66,14 @@ class _LoginPageState extends State<LoginPage> {
           child: Container(
             width: 350,
             decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius: BorderRadius.circular(24),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade100),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withOpacity(0.04),
                   blurRadius: 20,
-                  offset: const Offset(0, 4),
+                  offset: const Offset(0, 10),
                 ),
               ],
             ),
@@ -90,23 +92,23 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 14),
 
-                  const Text(
+                  Text(
                     'DON BOSCO TECHNICAL COLLEGE CEBU',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1A1A2E),
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1A1F36),
                       letterSpacing: 0.5,
                     ),
                   ),
                   const SizedBox(height: 6),
 
-                  const Text(
+                  Text(
                     'Class Track',
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 26,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: primaryBlue,
                     ),
                   ),
@@ -116,8 +118,8 @@ class _LoginPageState extends State<LoginPage> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Username',
-                      style: TextStyle(
-                        fontSize: 15,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: labelBlue,
                       ),
@@ -128,10 +130,9 @@ class _LoginPageState extends State<LoginPage> {
                     controller: _emailController,
                     decoration: InputDecoration(
                       hintText: 'student@dbtc-cebu.edu.ph',
-                      hintStyle: const TextStyle(
+                      hintStyle: GoogleFonts.poppins(
                         color: Colors.black38,
                         fontSize: 13,
-                        fontStyle: FontStyle.italic,
                       ),
                       filled: true,
                       fillColor: Colors.white,
@@ -140,22 +141,22 @@ class _LoginPageState extends State<LoginPage> {
                         vertical: 14,
                       ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(
-                          color: Color(0xFFB0C4D8),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Colors.grey.shade200,
                           width: 1,
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(
-                          color: Color(0xFFB0C4D8),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Colors.grey.shade200,
                           width: 1,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: primaryBlue, width: 1.5),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: primaryBlue, width: 1.5),
                       ),
                     ),
                   ),
@@ -165,8 +166,8 @@ class _LoginPageState extends State<LoginPage> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Password',
-                      style: TextStyle(
-                        fontSize: 15,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: labelBlue,
                       ),
@@ -179,18 +180,34 @@ class _LoginPageState extends State<LoginPage> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () {},
+                      onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text('Forgot Password'),
+                              content: const Text(
+                                'Please contact your administrator to reset your password.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: const Text(
+                      child: Text(
                         'Forgot Password?',
-                        style: TextStyle(
-                          color: Color(0xFF555555),
-                          fontSize: 13,
-                          fontStyle: FontStyle.italic,
+                        style: GoogleFonts.poppins(
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -202,7 +219,9 @@ class _LoginPageState extends State<LoginPage> {
                     child: BlocBuilder<AuthBloc, AuthState>(
                       builder: (context, state) {
                         if (state is AuthLoading) {
-                          return const Center(child: CircularProgressIndicator());
+                          return const Center(
+                            child: CircularProgressIndicator(color: primaryBlue),
+                          );
                         }
                         return ElevatedButton(
                           onPressed: _handleLogin,
@@ -210,14 +229,15 @@ class _LoginPageState extends State<LoginPage> {
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             backgroundColor: primaryBlue,
                             foregroundColor: Colors.white,
-                            elevation: 2,
+                            elevation: 4,
+                            shadowColor: Colors.black.withOpacity(0.2),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
+                              borderRadius: BorderRadius.circular(50),
                             ),
                           ),
-                          child: const Text(
+                          child: Text(
                             'Log In',
-                            style: TextStyle(
+                            style: GoogleFonts.poppins(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
@@ -226,40 +246,7 @@ class _LoginPageState extends State<LoginPage> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 24),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        "Don't have an account? ",
-                        style: TextStyle(color: Colors.black54, fontSize: 13),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pushReplacement(
-                            context,
-                            PageRouteBuilder(
-                              pageBuilder:
-                                  (context, animation, secondaryAnimation) =>
-                                      const CreateAccountPage(),
-                              transitionDuration: Duration.zero,
-                              reverseTransitionDuration: Duration.zero,
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          'Register now',
-                          style: TextStyle(
-                            color: Colors.black87,
-                            fontSize: 13,
-                            decoration: TextDecoration.underline,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),

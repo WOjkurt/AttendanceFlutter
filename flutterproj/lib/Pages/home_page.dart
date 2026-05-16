@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../blocs/auth_bloc.dart';
 import '../blocs/profile_bloc.dart';
 import '../blocs/schedule_bloc.dart';
 import '../blocs/course_bloc.dart';
 import '../blocs/attendance_student_bloc.dart';
+import '../blocs/analytics_bloc.dart';
 import '../models/schedule_model.dart';
 import '../models/course_model.dart';
-import 'schedule_page.dart';
+import 'attendance_overview_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -19,26 +21,9 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  @override
-  void initState() {
-    super.initState();
-    final authState = context.read<AuthBloc>().state;
-    if (authState is AuthAuthenticated) {
-      final profileState = context.read<ProfileBloc>().state;
-      if (profileState is! ProfileLoaded) {
-        context.read<ProfileBloc>().add(const LoadProfile());
-      }
-    }
-    // Ensure schedules and courses are loaded
-    final scheduleState = context.read<ScheduleBloc>().state;
-    if (scheduleState is! ScheduleLoaded) {
-      context.read<ScheduleBloc>().add(const LoadSchedules());
-    }
-    final courseState = context.read<CourseBloc>().state;
-    if (courseState is! CourseLoaded) {
-      context.read<CourseBloc>().add(const LoadCourses());
-    }
-  }
+  // Data loading is handled by DashboardPage.initState()
+  
+  // Data loading is handled by DashboardPage.initState()
 
   /// firstname greeting ni ha
   String _getFirstName(String fullName) {
@@ -47,21 +32,17 @@ class _HomePageState extends State<HomePage> {
     return parts.first;
   }
 
-  /// Get today's schedules sorted by start time
-  List<Schedule> _getTodaySchedules(List<Schedule> all) {
-    final todayDow = DateTime.now().weekday % 7; // Sunday=0
-    return all.where((s) => s.dayOfWeek == todayDow).toList()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
-  }
+
 
   /// Find the current or next upcoming event for the banner
-  Schedule? _getCurrentEvent(List<Schedule> todaySchedules) {
+  DaySchedule? _getCurrentEvent(List<DaySchedule> todaySchedules) {
     if (todaySchedules.isEmpty) return null;
     final now = TimeOfDay.now();
     for (final s in todaySchedules) {
       final end = _parseTime(s.endTime);
       if (end == null) continue;
-      if (end.hour > now.hour || (end.hour == now.hour && end.minute > now.minute)) {
+      if (end.hour > now.hour ||
+          (end.hour == now.hour && end.minute > now.minute)) {
         return s;
       }
     }
@@ -90,6 +71,7 @@ class _HomePageState extends State<HomePage> {
         return t;
       }
     }
+
     return '${fmt(start)} - ${fmt(end)}';
   }
 
@@ -116,7 +98,7 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Column(
@@ -126,8 +108,6 @@ class _HomePageState extends State<HomePage> {
                 _buildGreetingSection(),
                 const SizedBox(height: 24),
                 _buildCurrentEventBanner(),
-                const SizedBox(height: 28),
-                _buildUpcomingRemindersSection(),
                 const SizedBox(height: 28),
                 _buildAIAnalyticsSection(),
                 const SizedBox(height: 24),
@@ -144,12 +124,12 @@ class _HomePageState extends State<HomePage> {
     return BlocBuilder<ProfileBloc, ProfileState>(
       builder: (context, profileState) {
         String displayName = 'Student';
+        
         if (profileState is ProfileLoaded) {
-          displayName = _getFirstName(profileState.user.fullName);
-        } else {
-          final authState = context.read<AuthBloc>().state;
-          if (authState is AuthAuthenticated && authState.user.fullName.isNotEmpty) {
-            displayName = _getFirstName(authState.user.fullName);
+          if (profileState.displayName.isNotEmpty) {
+            displayName = profileState.displayName;
+          } else if (profileState.documentSeries.isNotEmpty) {
+            displayName = profileState.documentSeries;
           }
         }
 
@@ -157,61 +137,59 @@ class _HomePageState extends State<HomePage> {
 
         return Row(
           children: [
-            // Avatar
             Container(
               width: 56,
               height: 56,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: const Color(0xFF4A90D9).withOpacity(0.3),
+                  color: const Color(0xFF4A90D9).withValues(alpha: 0.3),
                   width: 2.5,
                 ),
                 color: const Color(0xFFE8EFF8),
               ),
               child: const ClipOval(
-                child: Icon(
-                  Icons.person,
-                  size: 32,
-                  color: Color(0xFF4A90D9),
-                ),
+                child: Icon(Icons.person, size: 32, color: Color(0xFF4A90D9)),
               ),
             ),
             const SizedBox(width: 14),
-            // Name + date
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                RichText(
-                  text: TextSpan(
-                    style: GoogleFonts.sourceSans3(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1A1F36),
-                    ),
-                    children: [
-                      const TextSpan(text: 'Hi, '),
-                      TextSpan(
-                        text: '$displayName!',
-                        style: GoogleFonts.sourceSans3(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF2E3192),
-                        ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RichText(
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    text: TextSpan(
+                      style: GoogleFonts.poppins(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1A1F36),
                       ),
-                    ],
+                      children: [
+                        const TextSpan(text: 'Hi, '),
+                        TextSpan(
+                          text: '$displayName!',
+                          style: GoogleFonts.poppins(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF2E3192),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  dateStr,
-                  style: GoogleFonts.sourceSans3(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF7B8794),
+                  const SizedBox(height: 2),
+                  Text(
+                    dateStr,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF7B8794),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         );
@@ -228,17 +206,15 @@ class _HomePageState extends State<HomePage> {
             String title = 'No Events Today';
             String subtitle = 'Enjoy your free time!';
 
-            if (scheduleState is ScheduleLoaded && scheduleState.schedules.isNotEmpty) {
-              final todaySchedules = _getTodaySchedules(scheduleState.schedules);
+            if (scheduleState is DayScheduleLoaded &&
+                scheduleState.schedules.isNotEmpty) {
+              final todaySchedules = scheduleState.schedules.toList()
+                ..sort((a, b) => a.startTime.compareTo(b.startTime));
               final current = _getCurrentEvent(todaySchedules);
 
               if (current != null) {
-                final courses = courseState is CourseLoaded ? courseState.courses : <Course>[];
-                title = _getCourseName(current.courseId, courses);
-                subtitle = '${_formatTimeRange(current.startTime, current.endTime)} | Section ${current.sectionId}';
-              } else if (todaySchedules.isEmpty) {
-                title = 'No data';
-                subtitle = 'No data';
+                title = current.title;
+                subtitle = '${_formatTimeRange(current.startTime, current.endTime)}';
               }
             } else if (scheduleState is ScheduleLoading) {
               title = 'Loading...';
@@ -249,17 +225,13 @@ class _HomePageState extends State<HomePage> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 26),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF5BAAF0), Color(0xFF72C6F0)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
+                color: const Color(0xFF2E3192),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF5BAAF0).withOpacity(0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 25,
+                    offset: const Offset(0, 10),
                   ),
                 ],
               ),
@@ -269,7 +241,7 @@ class _HomePageState extends State<HomePage> {
                   Text(
                     title,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.sourceSans3(
+                    style: GoogleFonts.poppins(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
@@ -279,10 +251,10 @@ class _HomePageState extends State<HomePage> {
                   Text(
                     subtitle,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.sourceSans3(
+                    style: GoogleFonts.poppins(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                     ),
                   ),
                 ],
@@ -299,32 +271,13 @@ class _HomePageState extends State<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Upcoming Reminders',
-              style: GoogleFonts.sourceSans3(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF1A1F36),
-              ),
-            ),
-            GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SchedulePage()),
-              ),
-              child: Text(
-                'See all',
-                style: GoogleFonts.sourceSans3(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF4A90D9),
-                ),
-              ),
-            ),
-          ],
+        Text(
+          'Upcoming Reminders',
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF1A1F36),
+          ),
         ),
         const SizedBox(height: 16),
         BlocBuilder<ScheduleBloc, ScheduleState>(
@@ -344,33 +297,20 @@ class _HomePageState extends State<HomePage> {
                   );
                 }
 
-                if (scheduleState is ScheduleLoaded) {
-                  final courses = courseState is CourseLoaded ? courseState.courses : <Course>[];
-
-                  // Show today's upcoming + tomorrow's schedules as reminders
-                  final todayDow = DateTime.now().weekday % 7;
-                  final tomorrowDow = (todayDow + 1) % 7;
-
-                  final reminders = scheduleState.schedules.where((s) {
-                    return s.dayOfWeek == todayDow || s.dayOfWeek == tomorrowDow;
-                  }).toList()
-                    ..sort((a, b) {
-                      if (a.dayOfWeek != b.dayOfWeek) {
-                        return a.dayOfWeek == todayDow ? -1 : 1;
-                      }
-                      return a.startTime.compareTo(b.startTime);
-                    });
+                if (scheduleState is DayScheduleLoaded) {
+                  final reminders = scheduleState.schedules.toList()
+                    ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
                   if (reminders.isEmpty) {
                     return _buildEmptyReminders();
                   }
 
-                  // Show max 4 reminders
-                  final displayReminders = reminders.take(4).toList();
+                  // Show max 3 reminders
+                  final displayReminders = reminders.take(3).toList();
 
                   return Column(
                     children: displayReminders.map((schedule) {
-                      return _buildReminderCard(schedule, courses);
+                      return _buildReminderCard(schedule);
                     }).toList(),
                   );
                 }
@@ -388,19 +328,12 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildReminderCard(Schedule schedule, List<Course> courses) {
-    final courseName = _getCourseName(schedule.courseId, courses);
+  Widget _buildReminderCard(DaySchedule schedule) {
+    final courseName = schedule.title;
     final timeStr = _formatTimeRange(schedule.startTime, schedule.endTime);
-    final category = _getCourseCategory(schedule.courseId, courses);
+    final category = 'Class';
 
-    // Alternate icons for variety
-    final icons = [
-      Icons.description_outlined,
-      Icons.laptop_mac_outlined,
-      Icons.menu_book_outlined,
-      Icons.science_outlined,
-    ];
-    final icon = icons[schedule.courseId % icons.length];
+    final icon = Icons.description_outlined;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -418,16 +351,9 @@ class _HomePageState extends State<HomePage> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFFD0D9E8),
-                width: 1,
-              ),
+              border: Border.all(color: const Color(0xFFD0D9E8), width: 1),
             ),
-            child: Icon(
-              icon,
-              size: 22,
-              color: const Color(0xFF4A90D9),
-            ),
+            child: Icon(icon, size: 22, color: const Color(0xFF4A90D9)),
           ),
           const SizedBox(width: 14),
           // Text content
@@ -437,7 +363,7 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Text(
                   courseName,
-                  style: GoogleFonts.sourceSans3(
+                  style: GoogleFonts.poppins(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF1A1F36),
@@ -448,7 +374,7 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 3),
                 Text(
                   '$timeStr  ·  $category',
-                  style: GoogleFonts.sourceSans3(
+                  style: GoogleFonts.poppins(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: const Color(0xFF8E99A8),
@@ -476,7 +402,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 8),
             Text(
               'No upcoming reminders',
-              style: GoogleFonts.sourceSans3(
+              style: GoogleFonts.poppins(
                 fontSize: 14,
                 color: Colors.grey.shade500,
               ),
@@ -503,17 +429,18 @@ class _HomePageState extends State<HomePage> {
             Text(
               isWakingUp ? 'Server is waking up...' : message,
               textAlign: TextAlign.center,
-              style: GoogleFonts.sourceSans3(
+              style: GoogleFonts.poppins(
                 fontSize: 14,
                 color: Colors.grey.shade600,
               ),
             ),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () => context.read<ScheduleBloc>().add(const LoadSchedules()),
+              onPressed: () =>
+                  context.read<ScheduleBloc>().add(const LoadSchedules()),
               child: Text(
                 'Retry',
-                style: GoogleFonts.sourceSans3(
+                style: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF4A90D9),
@@ -533,110 +460,255 @@ class _HomePageState extends State<HomePage> {
       children: [
         Text(
           'AI Analytics',
-          style: GoogleFonts.sourceSans3(
+          style: GoogleFonts.poppins(
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: const Color(0xFF1A1F36),
           ),
         ),
         const SizedBox(height: 16),
-        BlocBuilder<AttendanceStudentBloc, AttendanceStudentState>(
-          builder: (context, attState) {
-            if (attState is AttendanceStudentLoading) {
-              return _buildAnalyticsPlaceholder(isLoading: true);
-            }
+        BlocBuilder<AnalyticsBloc, AnalyticsState>(
+          builder: (context, analyticsState) {
+            return BlocBuilder<AttendanceStudentBloc, AttendanceStudentState>(
+              builder: (context, attState) {
+                if (attState is AttendanceStudentLoading) {
+                  return _buildAnalyticsPlaceholder(isLoading: true);
+                }
 
-            if (attState is AttendanceStudentLoaded) {
-              final total = attState.records.length;
-              final present = attState.records
-                  .where((r) => r.studentAttendanceStatus.name == 'present')
-                  .length;
-              final absent = attState.records
-                  .where((r) => r.studentAttendanceStatus.name == 'absent')
-                  .length;
-              final late = attState.records
-                  .where((r) => r.studentAttendanceStatus.name == 'late')
-                  .length;
+                if (attState is AttendanceStudentLoaded) {
+                  final total = attState.records.length;
+                  final present = attState.records
+                      .where((r) => r.studentAttendanceStatus.name == 'present')
+                      .length;
+                  final absent = attState.records
+                      .where((r) => r.studentAttendanceStatus.name == 'absent')
+                      .length;
+                  final late = attState.records
+                      .where((r) => r.studentAttendanceStatus.name == 'late')
+                      .length;
 
-              final attendanceRate = total > 0 ? (present / total * 100).round() : 0;
+                  final attendanceRate =
+                      total > 0 ? (present / total * 100).round() : 0;
 
-              return Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0F4FA),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.insights_rounded,
-                            color: Color(0xFF4A90D9),
-                            size: 24,
+                  if (analyticsState is AnalyticsInitial) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      context.read<AnalyticsBloc>().add(
+                            LoadAnalytics({
+                              'totalAbsences': absent,
+                              'totalLates': late,
+                            }),
+                          );
+                    });
+                  }
+
+                  // ── Tappable card ──────────────────────────────────────
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => MultiBlocProvider(
+                            providers: [
+                              BlocProvider.value(
+                                value: context.read<AttendanceStudentBloc>(),
+                              ),
+                              BlocProvider.value(
+                                value: context.read<AnalyticsBloc>(),
+                              ),
+                            ],
+                            child: const AttendanceOverviewPage(),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade100),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
-                              Text(
-                                'Attendance Overview',
-                                style: GoogleFonts.sourceSans3(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF1A1F36),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.insights_rounded,
+                                  color: Color(0xFF4A90D9),
+                                  size: 24,
                                 ),
                               ),
-                              Text(
-                                '$total total records',
-                                style: GoogleFonts.sourceSans3(
-                                  fontSize: 13,
-                                  color: const Color(0xFF8E99A8),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Attendance Overview',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF1A1F36),
+                                      ),
+                                    ),
+                                    Text(
+                                      '$total total records',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        color: const Color(0xFF8E99A8),
+                                      ),
+                                    ),
+                                  ],
                                 ),
+                              ),
+                              // Tap indicator arrow
+                              const Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: 14,
+                                color: Color(0xFF8E99A8),
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    // Attendance rate bar
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: total > 0 ? present / total : 0,
-                        minHeight: 8,
-                        backgroundColor: Colors.white,
-                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+                          const SizedBox(height: 18),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: LinearProgressIndicator(
+                              value: total > 0 ? present / total : 0,
+                              minHeight: 8,
+                              backgroundColor: Colors.white,
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                  Color(0xFF4CAF50)),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _buildStatChip('Present', '$present',
+                                  const Color(0xFF4CAF50)),
+                              _buildStatChip(
+                                  'Absent', '$absent', const Color(0xFFFF5252)),
+                              _buildStatChip(
+                                  'Late', '$late', const Color(0xFFFF9800)),
+                              _buildStatChip('Rate', '$attendanceRate%',
+                                  const Color(0xFF4A90D9)),
+                              if (analyticsState is AnalyticsLoading)
+                                const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                )
+                              else if (analyticsState is AnalyticsLoaded)
+                                _buildStatChip(
+                                    'Merit',
+                                    '${analyticsState.result.meritScore}',
+                                    const Color(0xFF2E3192))
+                              else if (analyticsState is AnalyticsError)
+                                _buildStatChip('Merit', '!', Colors.red)
+                              else
+                                _buildStatChip('Merit', '--', Colors.grey),
+                            ],
+                          ),
+                          if (analyticsState is AnalyticsError) ...[
+                            Builder(builder: (context) {
+                              final isWakingUp = analyticsState.message
+                                      .toLowerCase()
+                                      .contains('waking up') ||
+                                  analyticsState.message
+                                      .toLowerCase()
+                                      .contains('taking too long');
+                              return Column(
+                                children: [
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isWakingUp
+                                          ? const Color(0xFFE8F4FD)
+                                          : Colors.red.shade50,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: isWakingUp
+                                            ? const Color(0xFF5BAAF0)
+                                            : Colors.red.shade200,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          isWakingUp
+                                              ? Icons.cloud_sync
+                                              : Icons.error_outline,
+                                          size: 16,
+                                          color: isWakingUp
+                                              ? const Color(0xFF5BAAF0)
+                                              : Colors.red.shade400,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            isWakingUp
+                                                ? 'Server is warming up, this may take a moment...'
+                                                : analyticsState.message,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 11,
+                                              color: isWakingUp
+                                                  ? const Color(0xFF2E86C1)
+                                                  : Colors.red.shade700,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                          onTap: () {
+                                            context
+                                                .read<AnalyticsBloc>()
+                                                .add(RefreshAnalytics({
+                                              'totalAbsences': absent,
+                                              'totalLates': late,
+                                            }));
+                                          },
+                                          child: Text(
+                                            'Retry',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: const Color(0xFF4A90D9),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }),
+                          ],
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    // Stats row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildStatChip('Present', '$present', const Color(0xFF4CAF50)),
-                        _buildStatChip('Absent', '$absent', const Color(0xFFFF5252)),
-                        _buildStatChip('Late', '$late', const Color(0xFFFF9800)),
-                        _buildStatChip('Rate', '$attendanceRate%', const Color(0xFF4A90D9)),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            }
+                  );
+                }
 
-            return _buildAnalyticsPlaceholder(isLoading: false);
+                return _buildAnalyticsPlaceholder(isLoading: false);
+              },
+            );
           },
         ),
       ],
@@ -648,7 +720,7 @@ class _HomePageState extends State<HomePage> {
       children: [
         Text(
           value,
-          style: GoogleFonts.sourceSans3(
+          style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w800,
             color: color,
@@ -657,7 +729,7 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(height: 2),
         Text(
           label,
-          style: GoogleFonts.sourceSans3(
+          style: GoogleFonts.poppins(
             fontSize: 12,
             fontWeight: FontWeight.w500,
             color: const Color(0xFF8E99A8),
@@ -684,11 +756,15 @@ class _HomePageState extends State<HomePage> {
               )
             : Column(
                 children: [
-                  Icon(Icons.analytics_outlined, size: 36, color: Colors.grey.shade400),
+                  Icon(
+                    Icons.analytics_outlined,
+                    size: 36,
+                    color: Colors.grey.shade400,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'Analytics will appear once data loads',
-                    style: GoogleFonts.sourceSans3(
+                    style: GoogleFonts.poppins(
                       fontSize: 14,
                       color: Colors.grey.shade500,
                     ),

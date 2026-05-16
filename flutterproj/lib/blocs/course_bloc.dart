@@ -43,11 +43,12 @@ class CourseLoaded extends CourseState {
 
 class CourseError extends CourseState {
   final String message;
+  final bool isColdStart;
 
-  const CourseError(this.message);
+  const CourseError(this.message, {this.isColdStart = false});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, isColdStart];
 }
 
 // ─── BLoC ─────────────────────────────────────────────────────────────────────
@@ -68,7 +69,8 @@ class CourseBloc extends Bloc<CourseEvent, CourseState> {
       emit(CourseLoaded(courses));
     } catch (e) {
       final message = e.toString().replaceAll('ApiException: ', '').replaceAll('Exception: ', '');
-      emit(CourseError(message));
+      final isColdStart = message.contains('503') || message.contains('cold') || message.contains('waking');
+      emit(CourseError(message, isColdStart: isColdStart));
     }
   }
 }
